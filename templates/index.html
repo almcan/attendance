@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>座席表</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: #f0f4f8;
+            color: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ─── ヘッダー ─── */
+        .header {
+            text-align: center;
+            padding: 1.5rem 1rem 1rem;
+            width: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+        }
+
+        .header h1 {
+            font-size: 1.6rem;
+            font-weight: 900;
+            letter-spacing: 0.05em;
+        }
+
+        .header .subtitle {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 0.2rem;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .stat .num {
+            font-weight: 900;
+            font-size: 1.4rem;
+        }
+
+        .stat.present .num {
+            color: #69f0ae;
+        }
+
+        .stat.absent .num {
+            color: #ff8a80;
+        }
+
+        .stat.total .num {
+            color: #82b1ff;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            background: #69f0ae;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* ─── 教室レイアウト ─── */
+        .classroom {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem 3rem;
+            width: 100%;
+            max-width: 950px;
+        }
+
+        .desk-area {
+            display: flex;
+            gap: 1.2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        .desk-group {
+            border-radius: 0.8rem;
+            padding: 0.4rem;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .desk-group.green {
+            background: #e8f5e9;
+            border: 2px solid #a5d6a7;
+        }
+
+        .desk-group.blue {
+            background: #e3f2fd;
+            border: 2px solid #90caf9;
+        }
+
+        .desk-group.pink {
+            background: #fce4ec;
+            border: 2px solid #ef9a9a;
+        }
+
+        .desk-row {
+            display: flex;
+            gap: 3px;
+        }
+
+        /* ─── 座席カード ─── */
+        .seat {
+            width: 125px;
+            height: 80px;
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .seat.empty {
+            background: transparent;
+            border: none;
+        }
+
+        /* 未登録（クリック可能） */
+        .seat.no-student {
+            background: #fff;
+            border: 2px dashed #ccc;
+            cursor: pointer;
+        }
+
+        .seat.no-student:hover {
+            border-color: #999;
+            background: #f5f5f5;
+        }
+
+        .seat.no-student .seat-name {
+            color: #aaa;
+        }
+
+        .seat.no-student .seat-hint {
+            font-size: 0.6rem;
+            color: #bbb;
+            margin-top: 0.2rem;
+        }
+
+        /* 未出席 */
+        .seat.status-none {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+        }
+
+        .seat.status-none .seat-name {
+            color: #999;
+        }
+
+        .seat.status-none .seat-label {
+            font-size: 0.65rem;
+            color: #ccc;
+            margin-top: 0.15rem;
+        }
+
+        /* 出席中 */
+        .seat.status-present {
+            background: linear-gradient(135deg, #43a047, #66bb6a);
+            border: 2px solid #2e7d32;
+            box-shadow: 0 4px 15px rgba(67, 160, 71, 0.4);
+            transform: scale(1.03);
+        }
+
+        .seat.status-present .seat-name {
+            color: #fff;
+            font-weight: 900;
+        }
+
+        .seat.status-present .seat-label {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 700;
+            margin-top: 0.1rem;
+        }
+
+        .seat.status-present .seat-time {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 退席 */
+        .seat.status-left {
+            background: #fff8e1;
+            border: 2px solid #ffcc02;
+        }
+
+        .seat.status-left .seat-name {
+            color: #9e7700;
+        }
+
+        .seat.status-left .seat-label {
+            font-size: 0.65rem;
+            color: #bfa630;
+            margin-top: 0.15rem;
+        }
+
+        .seat.status-left .seat-time {
+            color: #bfa630;
+        }
+
+        .seat-name {
+            font-size: 1rem;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .seat-time {
+            font-size: 0.6rem;
+            color: #999;
+            margin-top: 0.1rem;
+        }
+
+        /* アニメーション */
+        @keyframes attend-flash {
+            0% {
+                box-shadow: 0 4px 15px rgba(67, 160, 71, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 40px rgba(67, 160, 71, 0.7);
+            }
+
+            100% {
+                box-shadow: 0 4px 15px rgba(67, 160, 71, 0.4);
+            }
+        }
+
+        .seat.flash {
+            animation: attend-flash 0.8s ease;
+        }
+
+        /* ─── 凡例 ─── */
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+        }
+
+        .legend-dot.present {
+            background: linear-gradient(135deg, #43a047, #66bb6a);
+        }
+
+        .legend-dot.left {
+            background: #ffcc02;
+        }
+
+        .legend-dot.none {
+            background: #e0e0e0;
+        }
+
+        /* ─── モーダル ─── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 1rem;
+            padding: 2rem;
+            min-width: 320px;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #1a1a2e;
+        }
+
+        .modal label {
+            display: block;
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 0.3rem;
+            margin-top: 0.8rem;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 0.5rem;
+            font-size: 0.95rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .modal input:focus {
+            border-color: #448aff;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 1.5rem;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 0.6rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            font-family: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .modal-buttons button:hover {
+            opacity: 0.85;
+        }
+
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #555;
+        }
+
+        .btn-register {
+            background: linear-gradient(135deg, #43a047, #66bb6a);
+            color: #fff;
+        }
+
+        .modal .error {
+            color: #e53935;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>D102 座席表</h1>
+        <div class="subtitle" id="date"></div>
+        <div class="status-bar">
+            <div class="stat present">
+                <span>出席</span>
+                <span class="num" id="present-count">-</span>
+            </div>
+            <div class="stat absent">
+                <span>未出席</span>
+                <span class="num" id="absent-count">-</span>
+            </div>
+            <div class="stat total">
+                <span>全員</span>
+                <span class="num" id="total-count">-</span>
+            </div>
+            <div class="live-indicator">
+                <span class="live-dot"></span>
+                <span>LIVE</span>
+                <span id="time"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="classroom">
+        <div class="desk-area" id="desk-area"></div>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-dot present"></div>出席
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot left"></div>退席
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot none"></div>未出席
+            </div>
+        </div>
+    </div>
+
+    <!-- 登録モーダル -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-title">学生データを登録</h2>
+            <label for="reg-student-id">学籍番号</label>
+            <input type="text" id="reg-student-id" placeholder="例: 09B○○○○○○">
+            <label for="reg-name">氏名</label>
+            <input type="text" id="reg-name" placeholder="例: 横平徳美">
+            <div class="error" id="modal-error"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+                <button class="btn-register" onclick="submitRegister()">登録</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let previousStatuses = {};
+        let registerSeatName = '';
+
+        function renderLayout(data) {
+            document.getElementById('date').textContent = data.date;
+            document.getElementById('time').textContent = data.time;
+            document.getElementById('present-count').textContent = data.present;
+            document.getElementById('total-count').textContent = data.total;
+            document.getElementById('absent-count').textContent = data.total - data.present;
+
+            const area = document.getElementById('desk-area');
+            area.innerHTML = '';
+
+            data.layout.forEach(group => {
+                const groupEl = document.createElement('div');
+                groupEl.className = `desk-group ${group.color}`;
+
+                group.rows.forEach(row => {
+                    const rowEl = document.createElement('div');
+                    rowEl.className = 'desk-row';
+
+                    row.forEach(seat => {
+                        const seatEl = document.createElement('div');
+                        seatEl.className = 'seat';
+
+                        if (seat === null) {
+                            seatEl.classList.add('empty');
+                        } else if (!seat.full_name) {
+                            // 未登録 → クリックで登録
+                            seatEl.classList.add('no-student');
+                            seatEl.innerHTML = `
+                                <div class="seat-name">${seat.seat_name}</div>
+                                <div class="seat-hint">クリックで登録</div>
+                            `;
+                            seatEl.addEventListener('click', () => openModal(seat.seat_name));
+                        } else {
+                            let statusClass, label, timeText;
+                            const seatKey = seat.student_id;
+
+                            if (seat.status === '出席') {
+                                statusClass = 'status-present';
+                                label = '出席';
+                                timeText = seat.timestamp ? seat.timestamp.split(' ')[1] : '';
+                            } else if (seat.status === '退席') {
+                                statusClass = 'status-left';
+                                label = '退席';
+                                timeText = seat.timestamp ? seat.timestamp.split(' ')[1] : '';
+                            } else {
+                                statusClass = 'status-none';
+                                label = '';
+                                timeText = '';
+                            }
+
+                            seatEl.classList.add(statusClass);
+
+                            if (previousStatuses[seatKey] !== undefined &&
+                                previousStatuses[seatKey] !== seat.status) {
+                                seatEl.classList.add('flash');
+                            }
+                            previousStatuses[seatKey] = seat.status;
+
+                            seatEl.innerHTML = `
+                                <div class="seat-name">${seat.seat_name}</div>
+                                ${label ? `<div class="seat-label">${label}</div>` : ''}
+                                ${timeText ? `<div class="seat-time">${timeText}</div>` : ''}
+                            `;
+                        }
+
+                        rowEl.appendChild(seatEl);
+                    });
+
+                    groupEl.appendChild(rowEl);
+                });
+
+                area.appendChild(groupEl);
+            });
+        }
+
+        // ─── 登録モーダル ───
+        function openModal(seatName) {
+            registerSeatName = seatName;
+            document.getElementById('modal-title').textContent =
+                `「${seatName}」のデータを登録しますか？`;
+            document.getElementById('reg-student-id').value = '';
+            document.getElementById('reg-name').value = '';
+            document.getElementById('modal-error').textContent = '';
+            document.getElementById('modal-overlay').classList.add('active');
+            document.getElementById('reg-student-id').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+        }
+
+        async function submitRegister() {
+            const studentId = document.getElementById('reg-student-id').value.trim();
+            const name = document.getElementById('reg-name').value.trim();
+            const errorEl = document.getElementById('modal-error');
+
+            if (!studentId || !name) {
+                errorEl.textContent = '学籍番号と氏名を入力してください';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ student_id: studentId, name: name }),
+                });
+                const data = await res.json();
+
+                if (data.ok) {
+                    closeModal();
+                } else {
+                    errorEl.textContent = data.error || '登録に失敗しました';
+                }
+            } catch (err) {
+                errorEl.textContent = '通信エラーが発生しました';
+            }
+        }
+
+        // Escキーでモーダルを閉じる
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // ─── SSE ───
+        function connectSSE() {
+            const source = new EventSource('/api/stream');
+
+            source.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                renderLayout(data);
+            };
+
+            source.onerror = function () {
+                source.close();
+                setTimeout(connectSSE, 3000);
+            };
+        }
+
+        connectSSE();
+    </script>
+</body>
+
+</html>

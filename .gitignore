@@ -1,6 +1,7 @@
 # 個人情報を含むファイル
 students.csv
 attendance/
+seating.json
 
 # Python 仮想環境
 .venv/
