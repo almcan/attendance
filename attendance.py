@@ -250,6 +250,12 @@ def attendance_mode():
             # 未登録カード
             print(f"  {RED}❌ [{now_str}] 未登録のカードです (IDm: {idm}){RESET}")
             print(f"       カードを登録するには register.py を使用してください")
+            try:
+                from dashboard import unknown_tap_counter, notify_clients as _nc
+                unknown_tap_counter["count"] += 1
+                _nc()
+            except Exception:
+                pass
 
         return True
 

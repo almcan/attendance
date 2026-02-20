@@ -478,11 +478,74 @@
         let previousStatuses = {};
         let registerSeatName = '';
 
+        // ─── サウンド ───
+        function generateWav(freq, duration, volume = 0.5) {
+            const sampleRate = 44100;
+            const numSamples = Math.floor(sampleRate * duration);
+            const buffer = new ArrayBuffer(44 + numSamples * 2);
+            const view = new DataView(buffer);
+
+            // WAV header
+            const writeStr = (offset, str) => {
+                for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+            };
+            writeStr(0, 'RIFF');
+            view.setUint32(4, 36 + numSamples * 2, true);
+            writeStr(8, 'WAVE');
+            writeStr(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeStr(36, 'data');
+            view.setUint32(40, numSamples * 2, true);
+
+            for (let i = 0; i < numSamples; i++) {
+                const t = i / sampleRate;
+                const envelope = Math.max(0, 1 - t / duration);
+                const sample = Math.sin(2 * Math.PI * freq * t) * volume * envelope;
+                view.setInt16(44 + i * 2, sample * 32767, true);
+            }
+
+            const blob = new Blob([buffer], { type: 'audio/wav' });
+            return URL.createObjectURL(blob);
+        }
+
+        // 音声を事前生成
+        const checkInUrl1 = generateWav(880, 0.15, 0.4);
+        const checkInUrl2 = generateWav(1175, 0.2, 0.4);
+        const checkOutUrl = generateWav(440, 0.3, 0.3);
+        const unknownUrl = generateWav(150, 0.4, 0.5);
+
+        function playCheckIn() {
+            new Audio(checkInUrl1).play().catch(() => { });
+            setTimeout(() => new Audio(checkInUrl2).play().catch(() => { }), 120);
+        }
+
+        function playCheckOut() {
+            new Audio(checkOutUrl).play().catch(() => { });
+        }
+
+        function playUnknownTap() {
+            new Audio(unknownUrl).play().catch(() => { });
+        }
+
+        let previousUnknownTapCount = -1;
+
         function renderLayout(data) {
             document.getElementById('date').textContent = data.date;
             document.getElementById('present-count').textContent = data.present;
             document.getElementById('total-count').textContent = data.total;
             document.getElementById('absent-count').textContent = data.total - data.present;
+
+            // 未登録カードの音
+            if (previousUnknownTapCount !== -1 && data.unknown_tap > previousUnknownTapCount) {
+                playUnknownTap();
+            }
+            previousUnknownTapCount = data.unknown_tap;
 
             const area = document.getElementById('desk-area');
             area.innerHTML = '';
@@ -532,6 +595,9 @@
                             if (previousStatuses[seatKey] !== undefined &&
                                 previousStatuses[seatKey] !== seat.status) {
                                 seatEl.classList.add('flash');
+                                // 音を鳴らす
+                                if (seat.status === '出席') playCheckIn();
+                                else if (seat.status === '退席') playCheckOut();
                             }
                             previousStatuses[seatKey] = seat.status;
 

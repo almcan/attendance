@@ -161,6 +161,7 @@ def _build_status_data() -> dict:
         "total": total_seats,
         "present": present_count,
         "layout": layout_data,
+        "unknown_tap": unknown_tap_counter["count"],
     }
 
 
@@ -278,6 +279,9 @@ def api_update_student():
 
 
 # ─── IDm 再登録 & 一時停止 & IDmキャプチャ ──────────────────
+# 未登録カードタップのカウンター
+unknown_tap_counter = {"count": 0}
+
 # 「次のカードタッチでこの学生の IDm を更新する」フラグ
 # paused: モーダル表示中は出席登録を停止
 pending_reassign = {"name": None, "paused": False}
