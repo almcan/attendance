@@ -100,10 +100,10 @@ def match_student_to_seat(seat_name: str, students: list) -> dict | None:
     """座席名から students.csv の学生を検索する。"""
     for s in students:
         # 名前の最初の部分（姓）で照合
-        # 例: 座席 "横平" → students.csv "横平徳美"
+        # 姓で照合
         clean_seat = seat_name.replace("(", "").replace(")", "").replace("（", "").replace("）", "")
         if s["name"].startswith(clean_seat) or clean_seat in s["name"]:
-            return 
+            return s
     return None
 
 
@@ -136,6 +136,7 @@ def _build_status_data() -> dict:
                         "seat_name": seat_name,
                         "full_name": student["name"],
                         "student_id": student["student_id"],
+                        "idm": student.get("idm", ""),
                         "status": info["status"],
                         "timestamp": info["timestamp"],
                     }
@@ -211,6 +212,7 @@ def api_register():
     data = request.get_json()
     student_id = data.get("student_id", "").strip()
     name = data.get("name", "").strip()
+    idm = data.get("idm", "").strip()
 
     if not student_id or not name:
         return jsonify({"error": "学籍番号と氏名は必須です"}), 400
@@ -223,11 +225,118 @@ def api_register():
 
     with open(STUDENTS_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["", student_id, name])
+        writer.writerow([idm, student_id, name])
 
     # 全クライアントに通知
     notify_clients()
 
+    return jsonify({"ok": True})
+
+
+@app.route("/api/student", methods=["PUT"])
+def api_update_student():
+    """学生情報（名前以外）を更新する。"""
+    data = request.get_json()
+    name = data.get("name", "").strip()
+    new_student_id = data.get("student_id", "").strip()
+
+    if not name or not new_student_id:
+        return jsonify({"error": "氏名と学籍番号は必須です"}), 400
+
+    if not STUDENTS_CSV.exists():
+        return jsonify({"error": "学生名簿が見つかりません"}), 404
+
+    # CSV を読み込んで該当行を更新
+    rows = []
+    found = False
+    with open(STUDENTS_CSV, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row["name"].strip() == name:
+                old_id = row["student_id"].strip()
+                old_name = row["name"].strip()
+                row["student_id"] = new_student_id
+                found = True
+                # 出席CSVファイル名も変更
+                old_file = ATTENDANCE_DIR / f"{old_id}_{old_name}.csv"
+                new_file = ATTENDANCE_DIR / f"{new_student_id}_{old_name}.csv"
+                if old_file.exists() and old_file != new_file:
+                    old_file.rename(new_file)
+            rows.append(row)
+
+    if not found:
+        return jsonify({"error": "該当する学生が見つかりません"}), 404
+
+    # 書き戻し
+    with open(STUDENTS_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["idm", "student_id", "name"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+    notify_clients()
+    return jsonify({"ok": True})
+
+
+# ─── IDm 再登録 & 一時停止 & IDmキャプチャ ──────────────────
+# 「次のカードタッチでこの学生の IDm を更新する」フラグ
+# paused: モーダル表示中は出席登録を停止
+pending_reassign = {"name": None, "paused": False}
+
+# 新規登録時のIDmキャプチャ
+pending_capture = {"active": False, "idm": None}
+
+
+@app.route("/api/pause", methods=["POST"])
+def api_pause():
+    """出席登録を一時停止する（モーダル表示中）。"""
+    pending_reassign["paused"] = True
+    return jsonify({"ok": True})
+
+
+@app.route("/api/pause", methods=["DELETE"])
+def api_resume():
+    """出席登録を再開する（モーダル閉じた時）。"""
+    pending_reassign["paused"] = False
+    return jsonify({"ok": True})
+
+
+@app.route("/api/capture", methods=["POST"])
+def api_capture_start():
+    """IDmキャプチャを開始する（登録モーダル用）。"""
+    pending_capture["active"] = True
+    pending_capture["idm"] = None
+    return jsonify({"ok": True})
+
+
+@app.route("/api/capture", methods=["GET"])
+def api_capture_status():
+    """キャプチャされたIDmを取得する。"""
+    return jsonify({"idm": pending_capture["idm"]})
+
+
+@app.route("/api/capture", methods=["DELETE"])
+def api_capture_cancel():
+    """IDmキャプチャをキャンセルする。"""
+    pending_capture["active"] = False
+    pending_capture["idm"] = None
+    return jsonify({"ok": True})
+
+
+@app.route("/api/reassign", methods=["POST"])
+def api_reassign():
+    """IDm 再登録を開始する。次のカードタッチで IDm を更新。"""
+    data = request.get_json()
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"error": "氏名は必須です"}), 400
+    pending_reassign["name"] = name
+    return jsonify({"ok": True, "message": f"カードをタッチしてください"})
+
+
+@app.route("/api/reassign", methods=["DELETE"])
+def api_cancel_reassign():
+    """IDm 再登録をキャンセルする。"""
+    pending_reassign["name"] = None
     return jsonify({"ok": True})
 
 

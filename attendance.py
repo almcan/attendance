@@ -167,6 +167,57 @@ def attendance_mode():
         idm = tag.identifier.hex().upper()
         now_str = datetime.now().strftime("%H:%M:%S")
 
+        # IDm 再登録チェック
+        try:
+            from dashboard import pending_reassign, pending_capture, STUDENTS_CSV as DASH_CSV
+            if pending_reassign.get("name"):
+                target_name = pending_reassign["name"]
+                pending_reassign["name"] = None
+
+                # students.csv の IDm を更新
+                rows = []
+                updated = False
+                csv_path = DASH_CSV
+                with open(csv_path, "r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if row["name"].strip() == target_name:
+                            row["idm"] = idm
+                            updated = True
+                        rows.append(row)
+
+                if updated:
+                    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                        writer = csv.DictWriter(f, fieldnames=["idm", "student_id", "name"])
+                        writer.writeheader()
+                        writer.writerows(rows)
+
+                    # 学生リストを再読み込み
+                    students = load_students()
+                    status_map = load_today_attendance(students)
+
+                    print(f"  {GREEN}🔄 [{now_str}] {target_name} の IDm を更新しました (IDm: {idm}){RESET}")
+
+                    try:
+                        from dashboard import notify_clients
+                        notify_clients()
+                    except Exception:
+                        pass
+                    return True
+
+            # 新規登録時のIDmキャプチャ
+            if pending_capture.get("active"):
+                pending_capture["idm"] = idm
+                print(f"  {CYAN}📱 [{now_str}] IDm をキャプチャしました (IDm: {idm}){RESET}")
+                return True
+
+            # モーダル表示中は出席/退席登録をスキップ
+            if pending_reassign.get("paused"):
+                print(f"  {YELLOW}[一時停止中] カードタッチを無視しました{RESET}")
+                return True
+        except Exception:
+            pass
+
         if idm in students:
             student = students[idm]
             current_status = status_map.get(idm)
