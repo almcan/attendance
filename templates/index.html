@@ -80,33 +80,7 @@
             color: #82b1ff;
         }
 
-        .live-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-            font-size: 0.9rem;
-            color: rgba(255, 255, 255, 0.4);
-        }
 
-        .live-dot {
-            width: 7px;
-            height: 7px;
-            background: #69f0ae;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.3;
-            }
-        }
 
         /* ─── 教室レイアウト ─── */
         .classroom {
@@ -421,7 +395,7 @@
 <body>
     <div class="header">
         <h1>D102 座席表</h1>
-        <div class="subtitle" id="date"></div>
+        <div class="subtitle"><span id="date"></span> <span id="header-clock"></span></div>
         <div class="status-bar">
             <div class="stat present">
                 <span>出席</span>
@@ -434,11 +408,6 @@
             <div class="stat total">
                 <span>全員</span>
                 <span class="num" id="total-count">-</span>
-            </div>
-            <div class="live-indicator">
-                <span class="live-dot"></span>
-                <span>LIVE</span>
-                <span id="time"></span>
             </div>
         </div>
     </div>
@@ -511,7 +480,6 @@
 
         function renderLayout(data) {
             document.getElementById('date').textContent = data.date;
-            document.getElementById('time').textContent = data.time;
             document.getElementById('present-count').textContent = data.present;
             document.getElementById('total-count').textContent = data.total;
             document.getElementById('absent-count').textContent = data.total - data.present;
@@ -783,6 +751,17 @@
                 setTimeout(connectSSE, 3000);
             };
         }
+
+        // ─── 時計 ───
+        function updateClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const mi = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('header-clock').textContent = `${h}:${mi}:${s}`;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
 
         connectSSE();
     </script>

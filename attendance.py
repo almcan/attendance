@@ -164,6 +164,10 @@ def attendance_mode():
         """カード接続時のコールバック。"""
         nonlocal students, status_map
 
+        # 毎回CSVから再読み込み（ブラウザ登録への対応）
+        students = load_students()
+        status_map = load_today_attendance(students)
+
         idm = tag.identifier.hex().upper()
         now_str = datetime.now().strftime("%H:%M:%S")
 
