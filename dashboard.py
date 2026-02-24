@@ -72,16 +72,14 @@ def load_students() -> list:
         for row in reader:
             students.append({
                 "idm": row["idm"].strip().upper(),
-                "student_id": row["student_id"].strip(),
                 "name": row["name"].strip(),
             })
     return students
 
 
-def get_student_status(student_id: str, name: str) -> dict:
-    """学生個人のCSVから本日の最新ステータスを取得する。"""
-    today = datetime.now().strftime("%Y-%m-%d")
-    filepath = ATTENDANCE_DIR / f"{student_id}_{name}.csv"
+def get_student_status(name: str) -> dict:
+    """学生個人のCSVから最新のステータスを取得する（日付をまたいでも保持）。"""
+    filepath = ATTENDANCE_DIR / f"{name}.csv"
     status = None
     timestamp = None
 
@@ -89,9 +87,8 @@ def get_student_status(student_id: str, name: str) -> dict:
         with open(filepath, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row["date"] == today:
-                    status = row.get("status", "出席").strip()
-                    timestamp = row.get("timestamp", "").strip()
+                status = row.get("status", "出席").strip()
+                timestamp = row.get("timestamp", "").strip()
 
     return {"status": status, "timestamp": timestamp}
 
@@ -99,7 +96,6 @@ def get_student_status(student_id: str, name: str) -> dict:
 def match_student_to_seat(seat_name: str, students: list) -> dict | None:
     """座席名から students.csv の学生を検索する。"""
     for s in students:
-        # 名前の最初の部分（姓）で照合
         # 姓で照合
         clean_seat = seat_name.replace("(", "").replace(")", "").replace("（", "").replace("）", "")
         if s["name"].startswith(clean_seat) or clean_seat in s["name"]:
@@ -131,11 +127,10 @@ def _build_status_data() -> dict:
                 student = match_student_to_seat(seat_name, students)
 
                 if student:
-                    info = get_student_status(student["student_id"], student["name"])
+                    info = get_student_status(student["name"])
                     seat_data = {
                         "seat_name": seat_name,
                         "full_name": student["name"],
-                        "student_id": student["student_id"],
                         "idm": student.get("idm", ""),
                         "status": info["status"],
                         "timestamp": info["timestamp"],
@@ -146,7 +141,6 @@ def _build_status_data() -> dict:
                     seat_data = {
                         "seat_name": seat_name,
                         "full_name": None,
-                        "student_id": None,
                         "status": None,
                         "timestamp": None,
                     }
@@ -211,70 +205,25 @@ def api_stream():
 def api_register():
     """ブラウザから学生を登録する。"""
     data = request.get_json()
-    student_id = data.get("student_id", "").strip()
     name = data.get("name", "").strip()
     idm = data.get("idm", "").strip()
 
-    if not student_id or not name:
-        return jsonify({"error": "学籍番号と氏名は必須です"}), 400
+    if not name:
+        return jsonify({"error": "氏名は必須です"}), 400
 
     # students.csv に追記
     if not STUDENTS_CSV.exists():
         with open(STUDENTS_CSV, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["idm", "student_id", "name"])
+            writer.writerow(["idm", "name"])
 
     with open(STUDENTS_CSV, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([idm, student_id, name])
+        writer.writerow([idm, name])
 
     # 全クライアントに通知
     notify_clients()
 
-    return jsonify({"ok": True})
-
-
-@app.route("/api/student", methods=["PUT"])
-def api_update_student():
-    """学生情報（名前以外）を更新する。"""
-    data = request.get_json()
-    name = data.get("name", "").strip()
-    new_student_id = data.get("student_id", "").strip()
-
-    if not name or not new_student_id:
-        return jsonify({"error": "氏名と学籍番号は必須です"}), 400
-
-    if not STUDENTS_CSV.exists():
-        return jsonify({"error": "学生名簿が見つかりません"}), 404
-
-    # CSV を読み込んで該当行を更新
-    rows = []
-    found = False
-    with open(STUDENTS_CSV, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            if row["name"].strip() == name:
-                old_id = row["student_id"].strip()
-                old_name = row["name"].strip()
-                row["student_id"] = new_student_id
-                found = True
-                # 出席CSVファイル名も変更
-                old_file = ATTENDANCE_DIR / f"{old_id}_{old_name}.csv"
-                new_file = ATTENDANCE_DIR / f"{new_student_id}_{old_name}.csv"
-                if old_file.exists() and old_file != new_file:
-                    old_file.rename(new_file)
-            rows.append(row)
-
-    if not found:
-        return jsonify({"error": "該当する学生が見つかりません"}), 404
-
-    # 書き戻し
-    with open(STUDENTS_CSV, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["idm", "student_id", "name"])
-        writer.writeheader()
-        writer.writerows(rows)
-
-    notify_clients()
     return jsonify({"ok": True})
 
 

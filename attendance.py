@@ -38,13 +38,13 @@ def ensure_dirs():
     if not STUDENTS_CSV.exists():
         with open(STUDENTS_CSV, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["idm", "student_id", "name"])
+            writer.writerow(["idm", "name"])
         print(f"[INFO] 学生名簿ファイルを作成しました: {STUDENTS_CSV}")
 
 
 def load_students() -> dict:
     """
-    students.csv を読み込み、IDm → {student_id, name} の辞書を返す。
+    students.csv を読み込み、IDm → {name} の辞書を返す。
     IDm は大文字に正規化される。
     """
     students = {}
@@ -55,39 +55,37 @@ def load_students() -> dict:
         for row in reader:
             idm = row["idm"].strip().upper()
             students[idm] = {
-                "student_id": row["student_id"].strip(),
                 "name": row["name"].strip(),
             }
     return students
 
 
-def get_student_attendance_file(student_id: str, name: str) -> Path:
+def get_student_attendance_file(name: str) -> Path:
     """学生個人の出席記録ファイルのパスを返す。"""
-    return ATTENDANCE_DIR / f"{student_id}_{name}.csv"
+    return ATTENDANCE_DIR / f"{name}.csv"
 
 
-def load_today_attendance(students: dict) -> dict:
+def load_latest_attendance(students: dict) -> dict:
     """
-    全学生のCSVから本日の最新ステータスを読み込み、IDm -> ステータス の辞書を返す。
+    全学生のCSVから最新のステータスを読み込み、IDm -> ステータス の辞書を返す。
+    日付に関係なく、最後に記録されたステータスを返す。
     ステータス: "出席" または "退席"
     """
-    today = datetime.now().strftime("%Y-%m-%d")
     status = {}
     for idm, info in students.items():
-        filepath = get_student_attendance_file(info["student_id"], info["name"])
+        filepath = get_student_attendance_file(info["name"])
         if not filepath.exists():
             continue
         with open(filepath, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row["date"] == today:
-                    status[idm] = row.get("status", "出席").strip()
+                status[idm] = row.get("status", "出席").strip()
     return status
 
 
-def record_attendance(student_id: str, name: str, status: str):
+def record_attendance(name: str, status: str):
     """出席または退席を学生個人の CSV ファイルに記録する。"""
-    attendance_file = get_student_attendance_file(student_id, name)
+    attendance_file = get_student_attendance_file(name)
     file_exists = attendance_file.exists()
     with open(attendance_file, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -139,7 +137,7 @@ def attendance_mode():
     """出席確認モード: カードタッチで出席/退席を記録。"""
     ensure_dirs()
     students = load_students()
-    status_map = load_today_attendance(students)
+    status_map = load_latest_attendance(students)
     terminate_flag = False
 
     def handle_sigint(signum, frame):
@@ -166,7 +164,7 @@ def attendance_mode():
 
         # 毎回CSVから再読み込み（ブラウザ登録への対応）
         students = load_students()
-        status_map = load_today_attendance(students)
+        status_map = load_latest_attendance(students)
 
         idm = tag.identifier.hex().upper()
         now_str = datetime.now().strftime("%H:%M:%S")
@@ -192,7 +190,7 @@ def attendance_mode():
 
                 if updated:
                     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-                        writer = csv.DictWriter(f, fieldnames=["idm", "student_id", "name"])
+                        writer = csv.DictWriter(f, fieldnames=["idm", "name"])
                         writer.writeheader()
                         writer.writerows(rows)
 
@@ -228,19 +226,19 @@ def attendance_mode():
 
             if current_status is None:
                 # 初回タッチ → 出席
-                record_attendance(student["student_id"], student["name"], "出席")
+                record_attendance(student["name"], "出席")
                 status_map[idm] = "出席"
-                print(f"  {GREEN}✅ [{now_str}] {student['name']} ({student['student_id']}) — 出席{RESET}")
+                print(f"  {GREEN}✅ [{now_str}] {student['name']} — 出席{RESET}")
             elif current_status == "出席":
                 # 2回目タッチ → 退席
-                record_attendance(student["student_id"], student["name"], "退席")
+                record_attendance(student["name"], "退席")
                 status_map[idm] = "退席"
-                print(f"  {YELLOW}🚪 [{now_str}] {student['name']} ({student['student_id']}) — 退席{RESET}")
+                print(f"  {YELLOW}🚪 [{now_str}] {student['name']} — 退席{RESET}")
             else:
                 # 退席後にタッチ → 出席
-                record_attendance(student["student_id"], student["name"], "出席")
+                record_attendance(student["name"], "出席")
                 status_map[idm] = "出席"
-                print(f"  {GREEN}✅ [{now_str}] {student['name']} ({student['student_id']}) — 出席{RESET}")
+                print(f"  {GREEN}✅ [{now_str}] {student['name']} — 出席{RESET}")
 
             # サマリー更新
             total = len(students)
@@ -259,17 +257,21 @@ def attendance_mode():
 
         return True
 
-    # NFC リーダーに接続
-    try:
-        clf = nfc.ContactlessFrontend("usb")
-    except Exception as e:
-        print(f"\n{RED}[エラー] カードリーダーに接続できませんでした。{RESET}")
-        print(f"  詳細: {e}")
-        print(f"\n  対処法:")
-        print(f"  1. カードリーダーが USB に接続されているか確認")
-        print(f"  2. Linux の場合: sudo 権限が必要な場合があります")
-        print(f"     udev ルールの設定を確認してください")
-        sys.exit(1)
+    # NFC リーダーに接続（リトライあり）
+    import time
+    clf = None
+    while not terminate_flag:
+        try:
+            clf = nfc.ContactlessFrontend("usb")
+            break
+        except Exception as e:
+            print(f"  {YELLOW}[待機] カードリーダーが見つかりません。5秒後に再試行します...{RESET}")
+            print(f"         詳細: {e}")
+            time.sleep(5)
+
+    if clf is None:
+        print(f"\n{CYAN}[INFO] プログラムを終了します。{RESET}")
+        return
 
     print(f"  {GREEN}[OK] カードリーダーに接続しました{RESET}")
     print()

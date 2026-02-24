@@ -433,8 +433,6 @@
     <div class="modal-overlay" id="modal-overlay">
         <div class="modal">
             <h2 id="modal-title">学生データを登録</h2>
-            <label for="reg-student-id">学籍番号</label>
-            <input type="text" id="reg-student-id" placeholder="例: 09B○○○○○○">
             <label for="reg-name">氏名</label>
             <input type="text" id="reg-name" placeholder="例: 横平徳美">
             <label>IDm</label>
@@ -454,8 +452,6 @@
     <div class="modal-overlay" id="edit-overlay">
         <div class="modal">
             <h2 id="edit-title">学生情報の編集</h2>
-            <label for="edit-student-id">学籍番号</label>
-            <input type="text" id="edit-student-id">
             <label>IDm</label>
             <div style="display:flex;align-items:center;gap:0.5rem;">
                 <input type="text" id="edit-idm" readonly style="flex:1;background:#f5f5f5;color:#999;">
@@ -469,7 +465,6 @@
             <div class="error" id="edit-error"></div>
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="closeEditModal()">キャンセル</button>
-                <button class="btn-register" onclick="submitEdit()">保存</button>
             </div>
         </div>
     </div>
@@ -574,7 +569,7 @@
                             seatEl.addEventListener('click', () => openModal(seat.seat_name));
                         } else {
                             let statusClass, label, timeText;
-                            const seatKey = seat.student_id;
+                            const seatKey = seat.full_name;
 
                             if (seat.status === '出席') {
                                 statusClass = 'status-present';
@@ -630,14 +625,13 @@
             capturedIdm = '';
             document.getElementById('modal-title').textContent =
                 `「${seatName}」のデータを登録しますか？`;
-            document.getElementById('reg-student-id').value = '';
             document.getElementById('reg-name').value = '';
             document.getElementById('modal-error').textContent = '';
             document.getElementById('capture-area').textContent = 'カードをリーダーにタッチしてください...';
             document.getElementById('capture-area').style.background = '#e3f2fd';
             document.getElementById('capture-area').style.color = '#1565c0';
             document.getElementById('modal-overlay').classList.add('active');
-            document.getElementById('reg-student-id').focus();
+            document.getElementById('reg-name').focus();
 
             // キャプチャ開始 & ポーリング
             fetch('/api/pause', { method: 'POST' });
@@ -667,12 +661,11 @@
         }
 
         async function submitRegister() {
-            const studentId = document.getElementById('reg-student-id').value.trim();
             const name = document.getElementById('reg-name').value.trim();
             const errorEl = document.getElementById('modal-error');
 
-            if (!studentId || !name) {
-                errorEl.textContent = '学籍番号と氏名を入力してください';
+            if (!name) {
+                errorEl.textContent = '氏名を入力してください';
                 return;
             }
 
@@ -680,7 +673,7 @@
                 const res = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ student_id: studentId, name: name, idm: capturedIdm }),
+                    body: JSON.stringify({ name: name, idm: capturedIdm }),
                 });
                 const data = await res.json();
 
@@ -707,14 +700,12 @@
             editingName = seat.full_name;
             document.getElementById('edit-title').textContent =
                 `「${seat.seat_name}」の情報を編集`;
-            document.getElementById('edit-student-id').value = seat.student_id || '';
             document.getElementById('edit-idm').value = seat.idm || '(未登録)';
             document.getElementById('edit-error').textContent = '';
             document.getElementById('reassign-status').style.display = 'none';
             document.getElementById('btn-reassign').style.display = '';
             reassignActive = false;
             document.getElementById('edit-overlay').classList.add('active');
-            document.getElementById('edit-student-id').focus();
             fetch('/api/pause', { method: 'POST' });
         }
 
@@ -735,32 +726,7 @@
             if (e.target === this) closeEditModal();
         });
 
-        async function submitEdit() {
-            const studentId = document.getElementById('edit-student-id').value.trim();
-            const errorEl = document.getElementById('edit-error');
 
-            if (!studentId) {
-                errorEl.textContent = '学籍番号を入力してください';
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/student', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: editingName, student_id: studentId }),
-                });
-                const data = await res.json();
-
-                if (data.ok) {
-                    closeEditModal();
-                } else {
-                    errorEl.textContent = data.error || '更新に失敗しました';
-                }
-            } catch (err) {
-                errorEl.textContent = '通信エラーが発生しました';
-            }
-        }
 
         async function startReassign() {
             try {
