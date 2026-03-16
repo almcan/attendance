@@ -11,4 +11,4 @@ __pycache__/
 *.pyc
 
 .env
-stydent.csv.bak
+students.csv.bak
