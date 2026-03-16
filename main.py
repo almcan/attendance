@@ -13,6 +13,7 @@ import threading
 from attendance import attendance_mode
 from register import register_mode
 from dashboard import app
+from slack_notifier import check_attendance
 
 
 def run_dashboard():
@@ -23,6 +24,31 @@ def run_dashboard():
     app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
 
 
+def run_notifier_scheduler():
+    """毎日 17:00 に Slack 通知を実行するスケジューラ。"""
+    import time
+    from datetime import datetime
+    
+    print(f"\033[94m  [OK] 通知スケジューラ起動: 毎日 17:00 (平日のみ)\033[0m")
+    
+    last_run_date = ""
+    
+    while True:
+        now = datetime.now()
+        current_date = now.strftime("%Y-%m-%d")
+        
+        # 平日（月=0 〜 金=4）かつ 17:00台 かつ 今日まだ実行していない場合
+        if now.weekday() < 5 and now.hour == 17 and current_date != last_run_date:
+            try:
+                check_attendance()
+                last_run_date = current_date
+            except Exception as e:
+                print(f"\033[91m  [エラー] 通知実行に失敗しました: {e}\033[0m")
+        
+        # 1分おきにチェック
+        time.sleep(60)
+
+
 def main():
     if "--register" in sys.argv or "-r" in sys.argv:
         register_mode()
@@ -31,6 +57,10 @@ def main():
         dashboard_thread = threading.Thread(target=run_dashboard, daemon=True)
         dashboard_thread.start()
         print(f"\033[96m  [OK] ダッシュボード起動: http://localhost:5000\033[0m")
+
+        # 通知スケジューラをバックグラウンドスレッドで起動
+        notifier_thread = threading.Thread(target=run_notifier_scheduler, daemon=True)
+        notifier_thread.start()
         print()
 
         # 出席確認モードをメインスレッドで実行

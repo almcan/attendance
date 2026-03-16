@@ -9,3 +9,6 @@ seating.json
 # Python キャッシュ
 __pycache__/
 *.pyc
+
+.env
+stydent.csv.bak
