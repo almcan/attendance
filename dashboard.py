@@ -76,12 +76,12 @@ def load_students() -> list:
             })
     return students
 
-
 def get_student_status(name: str) -> dict:
     """学生個人のCSVから最新のステータスを取得する（日付をまたいでも保持）。"""
     filepath = ATTENDANCE_DIR / f"{name}.csv"
     status = None
-    timestamp = None
+    time_val = None
+    date_val = None
 
     if filepath.exists():
         with open(filepath, "r", encoding="utf-8") as f:
@@ -89,8 +89,21 @@ def get_student_status(name: str) -> dict:
             for row in reader:
                 status = row.get("status", "出席").strip()
                 timestamp = row.get("timestamp", "").strip()
+                date_str = row.get("date", "").strip()
+                if date_str:
+                    try:
+                        # 2026-03-16 -> 03/16
+                        dt = datetime.strptime(date_str, "%Y-%m-%d")
+                        date_val = dt.strftime("%m/%d")
+                    except:
+                        date_val = date_str
+                
+                if timestamp and " " in timestamp:
+                    time_val = timestamp.split(" ")[1]
+                else:
+                    time_val = timestamp
 
-    return {"status": status, "timestamp": timestamp}
+    return {"status": status, "date": date_val, "time": time_val}
 
 
 def match_student_to_seat(seat_name: str, students: list) -> dict | None:
@@ -133,7 +146,8 @@ def _build_status_data() -> dict:
                         "full_name": student["name"],
                         "idm": student.get("idm", ""),
                         "status": info["status"],
-                        "timestamp": info["timestamp"],
+                        "date": info["date"],
+                        "time": info["time"],
                     }
                     if info["status"] == "出席":
                         present_count += 1
@@ -142,7 +156,8 @@ def _build_status_data() -> dict:
                         "seat_name": seat_name,
                         "full_name": None,
                         "status": None,
-                        "timestamp": None,
+                        "date": None,
+                        "time": None,
                     }
 
                 row_data.append(seat_data)

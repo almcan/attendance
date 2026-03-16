@@ -135,7 +135,7 @@
         /* ─── 座席カード ─── */
         .seat {
             width: 160px;
-            height: 100px;
+            height: 120px;
             border-radius: 0.6rem;
             display: flex;
             flex-direction: column;
@@ -145,6 +145,7 @@
             position: relative;
             overflow: hidden;
             cursor: pointer;
+            padding: 0.4rem;
         }
 
         .seat.empty {
@@ -204,47 +205,56 @@
         }
 
         .seat.status-present .seat-label {
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.85);
+            color: #fff;
             font-weight: 700;
-            margin-top: 0.15rem;
+            opacity: 0.9;
         }
 
         .seat.status-present .seat-time {
-            color: rgba(255, 255, 255, 0.7);
+            color: #fff;
+            opacity: 0.8;
         }
 
         /* 退席 */
         .seat.status-left {
-            background: #fff8e1;
-            border: 2px solid #ffcc02;
+            background: #fff9c4;
+            border: 2px solid #fbc02d;
         }
 
         .seat.status-left .seat-name {
-            color: #9e7700;
+            color: #f57f17;
+            font-weight: 900;
         }
 
         .seat.status-left .seat-label {
-            font-size: 0.8rem;
-            color: #bfa630;
-            margin-top: 0.15rem;
+            color: #f57f17;
+            font-weight: 700;
+            opacity: 0.9;
         }
 
         .seat.status-left .seat-time {
-            color: #bfa630;
+            color: #f57f17;
+            opacity: 0.8;
         }
 
         .seat-name {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 700;
             text-align: center;
-            line-height: 1.2;
+            line-height: 1.1;
+            margin-bottom: 2px;
+        }
+
+        .seat-label {
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 2px;
         }
 
         .seat-time {
             font-size: 0.75rem;
-            color: #999;
-            margin-top: 0.15rem;
+            text-align: center;
+            line-height: 1.2;
         }
 
         /* アニメーション */
@@ -405,10 +415,6 @@
                 <span>未出席</span>
                 <span class="num" id="absent-count">-</span>
             </div>
-            <div class="stat total">
-                <span>全員</span>
-                <span class="num" id="total-count">-</span>
-            </div>
         </div>
     </div>
 
@@ -533,7 +539,6 @@
         function renderLayout(data) {
             document.getElementById('date').textContent = data.date;
             document.getElementById('present-count').textContent = data.present;
-            document.getElementById('total-count').textContent = data.total;
             document.getElementById('absent-count').textContent = data.total - data.present;
 
             // 未登録カードの音
@@ -597,9 +602,10 @@
                             previousStatuses[seatKey] = seat.status;
 
                             seatEl.innerHTML = `
-                                <div class="seat-name">${seat.seat_name}</div>
-                                ${label ? `<div class="seat-label">${label}</div>` : ''}
-                                ${timeText ? `<div class="seat-time">${timeText}</div>` : ''}
+                                <div class="seat-name">${seat.full_name}</div>
+                                <div class="seat-label">${label || '未出席'}</div>
+                                <div class="seat-time">${seat.date || ''}</div>
+                                <div class="seat-time">${seat.time || ''}</div>
                             `;
 
                             // 登録済み座席クリック → 編集モーダル
