@@ -14,6 +14,7 @@ from attendance import attendance_mode
 from register import register_mode
 from dashboard import app
 from slack_notifier import check_attendance
+from slack_bot import run_slack_bot
 
 
 def run_dashboard():
@@ -37,8 +38,11 @@ def run_notifier_scheduler():
         now = datetime.now()
         current_date = now.strftime("%Y-%m-%d")
         
-        # 平日（月=0 〜 金=4）かつ 17:00台 かつ 今日まだ実行していない場合
-        if now.weekday() < 5 and now.hour == 17 and current_date != last_run_date:
+        # 祝日・カスタム休日（夏休み等）を含めた休日判定
+        from slack_notifier import is_holiday
+        
+        # 休日でなく、かつ 17:00台 かつ 今日まだ実行していない場合
+        if not is_holiday(now) and now.hour == 17 and current_date != last_run_date:
             try:
                 check_attendance()
                 last_run_date = current_date
@@ -61,6 +65,10 @@ def main():
         # 通知スケジューラをバックグラウンドスレッドで起動
         notifier_thread = threading.Thread(target=run_notifier_scheduler, daemon=True)
         notifier_thread.start()
+
+        # Slack Bot (Socket Mode) をバックグラウンドスレッドで起動
+        slack_bot_thread = threading.Thread(target=run_slack_bot, daemon=True)
+        slack_bot_thread.start()
         print()
 
         # 出席確認モードをメインスレッドで実行

@@ -44,7 +44,7 @@ def ensure_dirs():
 
 def load_students() -> dict:
     """
-    students.csv を読み込み、IDm → {name} の辞書を返す。
+    students.csv を読み込み、IDm → {name, slack_id} の辞書を返す。
     IDm は大文字に正規化される。
     """
     students = {}
@@ -56,6 +56,7 @@ def load_students() -> dict:
             idm = row["idm"].strip().upper()
             students[idm] = {
                 "name": row["name"].strip(),
+                "slack_id": row.get("slack_id", "").strip(),
             }
     return students
 
@@ -179,18 +180,20 @@ def attendance_mode():
                 # students.csv の IDm を更新
                 rows = []
                 updated = False
+                fieldnames = []
                 csv_path = DASH_CSV
                 with open(csv_path, "r", encoding="utf-8") as f:
                     reader = csv.DictReader(f)
+                    fieldnames = list(reader.fieldnames) if reader.fieldnames else ["idm", "name"]
                     for row in reader:
-                        if row["name"].strip() == target_name:
+                        if row.get("name", "").strip() == target_name:
                             row["idm"] = idm
                             updated = True
                         rows.append(row)
 
-                if updated:
+                if updated and fieldnames:
                     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-                        writer = csv.DictWriter(f, fieldnames=["idm", "name"])
+                        writer = csv.DictWriter(f, fieldnames=fieldnames)
                         writer.writeheader()
                         writer.writerows(rows)
 

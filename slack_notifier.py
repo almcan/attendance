@@ -4,6 +4,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+import jpholiday
 from dotenv import load_dotenv
 
 try:
@@ -21,6 +22,7 @@ load_dotenv()
 # ─── 設定 ───────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
 STUDENTS_CSV = BASE_DIR / "students.csv"
+HOLIDAYS_CSV = BASE_DIR / "holidays.csv"
 ATTENDANCE_DIR = BASE_DIR / "attendance"
 
 # Slack 設定
@@ -41,13 +43,38 @@ def get_last_5_business_days():
         
     while len(days) < 5:
         # 0:月 ~ 4:金
-        if current.weekday() < 5:
+        if not is_holiday(current):
             days.append(current.strftime("%Y-%m-%d"))
         current -= timedelta(days=1)
     return days
 
+def is_holiday(dt):
+    """該当日が週末・祝日・カスタム休日（夏休み等）かどうかを判定。"""
+    # 1. 週末チェック
+    if dt.weekday() >= 5:
+        return True
+    
+    # 2. 祝日チェック (jpholiday)
+    if jpholiday.is_holiday(dt):
+        return True
+    
+    # 3. カスタム休日チェック (holidays.csv)
+    date_str = dt.strftime("%Y-%m-%d")
+    if HOLIDAYS_CSV.exists():
+        with open(HOLIDAYS_CSV, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row.get("date") == date_str:
+                    return True
+                    
+    return False
+
 def check_attendance():
     """1週間（5営業日）出席していない人を特定して通知する。"""
+    # 今日が休日なら何もしない
+    if is_holiday(datetime.now()):
+        return
+
     if not SLACK_BOT_TOKEN and not SLACK_WEBHOOK_URL:
         print("[Error] SLACK_BOT_TOKEN または SLACK_WEBHOOK_URL が設定されていません。")
         return
