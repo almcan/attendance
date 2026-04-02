@@ -479,12 +479,12 @@
 
         <!-- ── CSVダウンロード ── -->
         <div class="card">
-            <h2>📥 在籍時間集計ダウンロード</h2>
+            <h2>在籍時間集計ダウンロード</h2>
 
             <!-- 全員まとめてZIP -->
             <div class="dl-row" style="margin-bottom:1.2rem;">
                 <div>
-                    <div class="dl-label">📦 全在籍時間集計（ZIP一括）</div>
+                    <div class="dl-label">全在籍時間集計（ZIP一括）</div>
                     <div class="dl-sub">全学生の日別在籍時間（リモート除く）を ZIP 圧縮</div>
                 </div>
                 <a href="/api/admin/download/attendance_zip" class="btn-dl btn-dl-zip">⬇ ZIP ダウンロード</a>
@@ -505,10 +505,10 @@
 
             <div class="dl-row">
                 <div>
-                    <div class="dl-label">📋 全欠席記録（一括）</div>
-                    <div class="dl-sub">全学生の欠席日・理由をまとめた CSV を ZIP 圧縮</div>
+                    <div class="dl-label">全欠席記録（一括）</div>
+                    <div class="dl-sub">全学生の欠席日・理由をまとめた CSV をダウンロード</div>
                 </div>
-                <a href="/api/admin/download/absent_zip" class="btn-dl btn-dl-red">⬇ ZIP ダウンロード</a>
+                <a href="/api/admin/download/absent_csv" class="btn-dl btn-dl-red">⬇ CSV ダウンロード</a>
             </div>
         </div>
 
@@ -552,7 +552,7 @@
                         <div class="dl-sub">日別在籍時間（リモート除く）</div>
                     </div>
                     <div style="display:flex;gap:0.5rem;">
-                        <button onclick="showHistory('${name}')" class="btn btn-primary" style="padding:0.4rem 0.8rem;font-size:0.75rem;">📜 履歴確認</button>
+                        <button onclick="showHistory('${name}')" class="btn btn-primary" style="padding:0.4rem 0.8rem;font-size:0.75rem;">履歴確認</button>
                         <a href="/api/admin/download/attendance/${encodeURIComponent(name)}"
                            class="btn-dl">⬇ CSV</a>
                     </div>

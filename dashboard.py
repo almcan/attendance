@@ -744,10 +744,10 @@ def download_attendance_zip():
     )
 
 
-@app.route("/api/admin/download/absent_zip")
+@app.route("/api/admin/download/absent_csv")
 @admin_required
-def download_absent_zip():
-    """全学生の欠席記録を1つのCSVにまとめてダウンロード（欠席ステータスのみ）。"""
+def download_absent_csv():
+    """全学生の欠席記録を CSV で直接ダウンロード（欠席ステータスのみ）。"""
     students = []
     if STUDENTS_CSV.exists():
         with open(STUDENTS_CSV, "r", encoding="utf-8") as f:
@@ -780,18 +780,12 @@ def download_absent_zip():
     writer.writerows(records)
     csv_bytes = buf_str.getvalue().encode("utf-8-sig")
 
-    # 1ファイルをZIPに入れて返す
-    zip_buf = io.BytesIO()
-    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        zf.writestr(f"欠席記録_{timestamp}.csv", csv_bytes)
-    zip_buf.seek(0)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return send_file(
-        zip_buf,
-        mimetype="application/zip",
+        io.BytesIO(csv_bytes),
+        mimetype="text/csv; charset=utf-8",
         as_attachment=True,
-        download_name=f"欠席記録_{timestamp}.zip",
+        download_name=f"欠席記録_{timestamp}.csv",
     )
 
 
