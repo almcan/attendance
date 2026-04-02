@@ -403,6 +403,10 @@
             background: linear-gradient(135deg, #7b1fa2, #ab47bc);
         }
 
+        .btn-dl-red {
+            background: linear-gradient(135deg, #c62828, #ef5350);
+        }
+
         .section-sub {
             font-size: 0.78rem;
             color: #777;
@@ -442,7 +446,7 @@
 
         <!-- ── 休日設定 ── -->
         <div class="card">
-            <h2>📅 休日設定</h2>
+            <h2>休日設定</h2>
             <div id="error-msg" class="error"></div>
 
             <div class="add-box">
@@ -475,7 +479,7 @@
 
         <!-- ── CSVダウンロード ── -->
         <div class="card">
-            <h2>📥 CSV ダウンロード</h2>
+            <h2>📥 在籍時間集計ダウンロード</h2>
 
             <!-- 全員まとめてZIP -->
             <div class="dl-row" style="margin-bottom:1.2rem;">
@@ -491,6 +495,20 @@
 
             <div class="dl-group" id="individual-dl-list">
                 <!-- JS で流し込み -->
+            </div>
+        </div>
+
+        <!-- ── 欠席記録ダウンロード ── -->
+        <div class="card">
+            <h2>🚫 欠席記録ダウンロード</h2>
+            <p class="section-sub" style="margin-bottom:1rem;">欠席ステータスが記録された日付・氏名・理由の一覧です。</p>
+
+            <div class="dl-row">
+                <div>
+                    <div class="dl-label">📋 全欠席記録（一括）</div>
+                    <div class="dl-sub">全学生の欠席日・理由をまとめた CSV を ZIP 圧縮</div>
+                </div>
+                <a href="/api/admin/download/absent_zip" class="btn-dl btn-dl-red">⬇ ZIP ダウンロード</a>
             </div>
         </div>
 

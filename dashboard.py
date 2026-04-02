@@ -744,6 +744,57 @@ def download_attendance_zip():
     )
 
 
+@app.route("/api/admin/download/absent_zip")
+@admin_required
+def download_absent_zip():
+    """全学生の欠席記録を1つのCSVにまとめてダウンロード（欠席ステータスのみ）。"""
+    students = []
+    if STUDENTS_CSV.exists():
+        with open(STUDENTS_CSV, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                students.append(row["name"].strip())
+
+    # 全学生の欠席レコードを収集
+    records: list[dict] = []
+    for name in sorted(students):
+        filepath = ATTENDANCE_DIR / f"{name}.csv"
+        if not filepath.exists():
+            continue
+        seen_dates: set[str] = set()
+        with open(filepath, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                date_str = row.get("date", "").strip()
+                status   = row.get("status", "").strip()
+                reason   = row.get("reason", "").strip()
+                if status == "欠席" and date_str and date_str not in seen_dates:
+                    records.append({"氏名": name, "日付": date_str, "理由": reason})
+                    seen_dates.add(date_str)
+
+    records.sort(key=lambda x: (x["日付"], x["氏名"]))
+
+    buf_str = io.StringIO()
+    writer = csv.DictWriter(buf_str, fieldnames=["氏名", "日付", "理由"])
+    writer.writeheader()
+    writer.writerows(records)
+    csv_bytes = buf_str.getvalue().encode("utf-8-sig")
+
+    # 1ファイルをZIPに入れて返す
+    zip_buf = io.BytesIO()
+    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        zf.writestr(f"欠席記録_{timestamp}.csv", csv_bytes)
+    zip_buf.seek(0)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return send_file(
+        zip_buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"欠席記録_{timestamp}.zip",
+    )
+
+
 if __name__ == "__main__":
     print("=" * 50)
     print("  出席ダッシュボード起動中...")
