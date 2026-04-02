@@ -87,24 +87,26 @@ def get_current_status(name: str) -> str | None:
     return latest  # 当日の記録がなければ None
 
 
-def do_record(name: str, status: str):
+def do_record(name: str, status: str, date: str = None, reason: str = None):
     """attendance.py の record_attendance を呼び出す。"""
     from attendance import record_attendance
-    record_attendance(name, status)
+    record_attendance(name, status, date=date, reason=reason)
 
 
 # ─── メッセージハンドラ ───────────────────────────────────────
 
 HELP_TEXT = (
     "*コマンド一覧*\n"
+    "• `出席` / `remote` → リモート出席を記録\n"
     "• `退席` / `leave`  → 退席を記録\n"
+    "• `欠席 [日付] [理由]` → 欠席を記録 (例: `欠席 明日 風邪`)\n"
     "• `状態` / `status` → 現在のステータスを確認\n"
     "• `ヘルプ` / `help` → このメッセージを表示\n"
     "\n"
-    "※ 出席はカードタッチで記録してください。"
+    "※ 教室での出席はカードタッチで記録してください。"
 )
 
-STATUS_EMOJI = {"出席": "🟢", "退席": "🔴"}
+STATUS_EMOJI = {"出席": "🟢", "リモート中": "🔵", "退席": "🔴", "欠席": "❌"}
 
 
 # ─── デバッグ: すべてのイベントをログ出力 ───────────────────
@@ -147,6 +149,16 @@ def handle_dm(event, say, logger):
     if cmd in ("状態", "status"):
         say(f"{emoji} *{name}* さんの現在のステータス: *{current_label}*")
 
+    # ── リモート出席 ────────────────────────────────────────
+    elif cmd in ("出席", "remote", "リモート"):
+        if current == "出席":
+            say(f"*{name}* さんはすでに（教室での） *出席済み* です。")
+        elif current == "リモート中":
+            say(f"*{name}* さんはすでに *リモート出席済み* です。")
+        else:
+            do_record(name, "リモート中")
+            say(f"*{name}* さんの *リモート出席* を記録しました！")
+
     # ── 退席 ────────────────────────────────────────────────
     elif cmd in ("退席", "leave"):
         if current == "退席":
@@ -154,11 +166,50 @@ def handle_dm(event, say, logger):
         elif current is None:
             say(
                 f"*{name}* さんはまだ出席記録がありません。\n"
-                "先にカードをタッチして出席を記録してください。"
+                "先にカードをタッチするか、リモート出席を記録してください。"
             )
         else:
             do_record(name, "退席")
             say(f"*{name}* さんの *退席* を記録しました！")
+
+    # ── 欠席 ────────────────────────────────────────────────
+    elif cmd.startswith("欠席"):
+        import re
+        from datetime import timedelta
+        # 形式: 欠席 [日付] [理由]
+        parts = re.split(r'\s+', text)
+        target_date = datetime.now()
+        reason = ""
+        
+        if len(parts) >= 3:
+            date_input = parts[1]
+            reason = " ".join(parts[2:])
+            if date_input == "今日":
+                pass
+            elif date_input == "明日":
+                target_date += timedelta(days=1)
+            elif "/" in date_input:
+                try:
+                    m, d = map(int, date_input.split("/"))
+                    target_date = target_date.replace(month=m, day=d)
+                except:
+                    say("❌ 日付の形式が正しくありません (例: 4/1)")
+                    return
+            else:
+                try:
+                    target_date = datetime.strptime(date_input, "%Y-%m-%d")
+                except:
+                    # 日付と思えない場合は第2引数以降を全て理由とする(日付は今日)
+                    reason = " ".join(parts[1:])
+        elif len(parts) == 2:
+            reason = parts[1]
+        else:
+            say("❌ 理由を入力してください (例: `欠席 風邪`, `欠席 明日 通院`)")
+            return
+
+        date_val = target_date.strftime("%Y-%m-%d")
+        do_record(name, "欠席", date=date_val, reason=reason)
+        say(f"✅ *{name}* さんの *{date_val}* の *欠席* (理由: {reason}) を記録しました。")
 
     # ── ヘルプ ──────────────────────────────────────────────
     elif cmd in ("ヘルプ", "help"):

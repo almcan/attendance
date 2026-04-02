@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者ログイン</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 1.2rem;
+            padding: 2.5rem 2.5rem 2rem;
+            width: 360px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .login-icon {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 900;
+            color: #1a1a2e;
+            margin-bottom: 0.3rem;
+        }
+
+        .sub {
+            text-align: center;
+            font-size: 0.82rem;
+            color: #888;
+            margin-bottom: 1.8rem;
+        }
+
+        .error-box {
+            background: #ffebee;
+            color: #c62828;
+            padding: 0.7rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #e53935;
+        }
+
+        label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #555;
+            margin-bottom: 0.3rem;
+            margin-top: 1rem;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.7rem 0.9rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 0.5rem;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #1976d2;
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            margin-top: 1.5rem;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, #1a1a2e, #1976d2);
+            color: #fff;
+            border: none;
+            border-radius: 0.6rem;
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        button[type="submit"]:hover { opacity: 0.9; }
+        button[type="submit"]:active { transform: scale(0.98); }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.2rem;
+            font-size: 0.82rem;
+            color: #999;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .back-link:hover { color: #1976d2; }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <div class="login-icon">🔐</div>
+        <h1>管理者ログイン</h1>
+        <div class="sub">D102 出席管理システム</div>
+
+        {% if error %}
+        <div class="error-box">⚠ {{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            <label for="username">ユーザー名</label>
+            <input type="text" id="username" name="username" autocomplete="username" autofocus required>
+
+            <label for="password">パスワード</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+            <button type="submit">ログイン</button>
+        </form>
+        <a href="/" class="back-link">← 座席表に戻る</a>
+    </div>
+</body>
+
+</html>

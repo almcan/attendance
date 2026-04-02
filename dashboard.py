@@ -11,17 +11,59 @@ Server-Sent Events (SSE) で出席変更を即座にブラウザへ反映。
 """
 
 import csv
+import hashlib
+import io
 import json
+import os
 import queue
 import threading
+import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import jpholiday
-from flask import Flask, Response, jsonify, render_template, request
+from flask import (
+    Flask, Response, jsonify, redirect, render_template,
+    request, send_file, session, url_for
+)
 from functools import wraps
 
-# ─── localhost 制限 ─────────────────────────────────────────
+# ─── localhost 制限 + 管理者認証 ──────────────────────────────
+
+ADMIN_USERNAME_HASH = os.environ.get("ADMIN_USERNAME_HASH", "")
+ADMIN_PASSWORD_HASH = os.environ.get("ADMIN_PASSWORD_HASH", "")
+
+
+def _sha256(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _is_localhost() -> bool:
+    """リクエストが localhost からのものか確認。"""
+    try:
+        return request.remote_addr in ("127.0.0.1", "::1")
+    except RuntimeError:
+        return False
+
+
+def _is_admin_session() -> bool:
+    """セッションの認証状況を確認。"""
+    try:
+        return session.get("admin_authenticated") is True
+    except RuntimeError:
+        return False
+
+
+def admin_required(f):
+    """ローカルホストから、またはログイン済みセッションからのリクエストのみ許可するデコレーター。"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if _is_localhost() or _is_admin_session():
+            return f(*args, **kwargs)
+        return redirect(url_for("admin_login", next=request.url))
+    return decorated
+
+
 def localhost_only(f):
     """localhost (127.0.0.1 / ::1) からのリクエストのみ許可するデコレーター。"""
     @wraps(f)
@@ -32,6 +74,7 @@ def localhost_only(f):
         return f(*args, **kwargs)
     return decorated
 
+
 # ─── 定数 ───────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
 STUDENTS_CSV = BASE_DIR / "students.csv"
@@ -39,6 +82,7 @@ HOLIDAYS_CSV = BASE_DIR / "holidays.csv"
 ATTENDANCE_DIR = BASE_DIR / "attendance"
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or os.urandom(24)
 
 # ─── SSE (Server-Sent Events) ──────────────────────────────
 
@@ -96,6 +140,7 @@ def get_student_status(name: str) -> dict:
     status = None
     time_val = None
     date_val = None
+    reason = ""
 
     if filepath.exists():
         with open(filepath, "r", encoding="utf-8") as f:
@@ -104,6 +149,7 @@ def get_student_status(name: str) -> dict:
                 status = row.get("status", "出席").strip()
                 timestamp = row.get("timestamp", "").strip()
                 date_str = row.get("date", "").strip()
+                reason = row.get("reason", "").strip()
                 if date_str:
                     try:
                         # 2026-03-16 -> 03/16
@@ -117,7 +163,16 @@ def get_student_status(name: str) -> dict:
                 else:
                     time_val = timestamp
 
-    return {"status": status, "date": date_val, "time": time_val}
+    # 12時間経過していたら自動的に「退席」扱いにする
+    if status in ("出席", "リモート中") and timestamp:
+        try:
+            last_dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+            if datetime.now() - last_dt > timedelta(hours=12):
+                status = "退席"
+        except:
+            pass
+
+    return {"status": status, "date": date_val, "time": time_val, "reason": reason}
 
 
 def match_student_to_seat(seat_name: str, students: list) -> dict | None:
@@ -162,7 +217,7 @@ def _build_status_data() -> dict:
                         "date": info["date"],
                         "time": info["time"],
                     }
-                    if info["status"] == "出席":
+                    if info["status"] in ("出席", "リモート中"):
                         present_count += 1
                 else:
                     seat_data = {
@@ -202,10 +257,49 @@ def calendar_page():
 
 
 @app.route("/admin")
-@localhost_only
+@admin_required
 def admin_page():
-    """管理画面（休日設定など）。localhost のみ。"""
-    return render_template("admin.html")
+    """管理画面（休日設定など）。localhost または認証済みのみ。"""
+    # 学生一覧を渡す
+    students = []
+    if STUDENTS_CSV.exists():
+        with open(STUDENTS_CSV, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                students.append(row["name"].strip())
+    return render_template("admin.html", students=students)
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    """管理者ログインページ。localhostからはスキップ。"""
+    if _is_localhost() or _is_admin_session():
+        return redirect(url_for("admin_page"))
+
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        if not ADMIN_USERNAME_HASH or not ADMIN_PASSWORD_HASH:
+            error = "管理者認証情報が未設定です。サーバー管理者に連絡してください。"
+        elif (_sha256(username) == ADMIN_USERNAME_HASH and
+              _sha256(password) == ADMIN_PASSWORD_HASH):
+            session["admin_authenticated"] = True
+            session.permanent = False
+            next_url = request.args.get("next") or url_for("admin_page")
+            return redirect(next_url)
+        else:
+            error = "ユーザー名またはパスワードが違います。"
+
+    return render_template("admin_login.html", error=error)
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    """セッションを削除してログアウト。"""
+    session.pop("admin_authenticated", None)
+    return redirect(url_for("admin_login"))
 
 
 @app.route("/api/status")
@@ -506,6 +600,148 @@ def api_delete_holiday(date_str):
         writer.writerows(rows)
 
     return jsonify({"ok": True})
+
+
+# ─── CSV / ZIP ダウンロード API ─────────────────────────────────
+
+def _calc_daily_hours(name: str) -> list[dict]:
+    """学生個人のCSVから日別在籍時間（リモート除く）を計算して返す。
+
+    Returns:
+        [{'date': 'YYYY-MM-DD', 'hours': 1.23}, ...] 日付昇順
+    """
+    filepath = ATTENDANCE_DIR / f"{name}.csv"
+    if not filepath.exists():
+        return []
+
+    # 全行を読み込む
+    rows = []
+    with open(filepath, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            date_str = row.get("date", "").strip()
+            status   = row.get("status", "").strip()
+            ts_str   = row.get("timestamp", "").strip()
+            if not date_str or not status or not ts_str:
+                continue
+            try:
+                ts = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
+            rows.append({"date": date_str, "status": status, "ts": ts})
+
+    # 日付ごとに在籍秒数を集計
+    # 「出席」→「退席」のペアのみカウント（リモート中は除外）
+    # 日をまたぐペアは出席日の23:59:59で打ち切る
+    daily_seconds: dict[str, float] = {}
+    last_attend: datetime | None = None   # 直近「出席」タイムスタンプ
+    last_attend_date: str | None = None   # 直近「出席」の日付文字列
+
+    def _add_secs(date_key: str, secs: float) -> None:
+        if date_key not in daily_seconds:
+            daily_seconds[date_key] = 0.0
+        daily_seconds[date_key] += secs
+
+    for r in rows:
+        date_str = r["date"]
+        # 日付エントリを確保
+        if date_str not in daily_seconds:
+            daily_seconds[date_str] = 0.0
+
+        if r["status"] == "出席":
+            last_attend = r["ts"]
+            last_attend_date = date_str
+
+        elif r["status"] in ("退席", "リモート中"):
+            if last_attend is not None and last_attend_date is not None:
+                if r["ts"].date() != last_attend.date():
+                    # 日をまたぐ場合は出席日の 23:59:59 で打ち切り
+                    midnight = datetime(
+                        last_attend.year, last_attend.month, last_attend.day,
+                        23, 59, 59
+                    )
+                    diff = max((midnight - last_attend).total_seconds(), 0.0)
+                    _add_secs(last_attend_date, diff)
+                else:
+                    diff = (r["ts"] - last_attend).total_seconds()
+                    if diff > 0:
+                        _add_secs(last_attend_date, diff)
+            last_attend = None
+            last_attend_date = None
+
+    # 最後に退席していない場合（現在も在席中）は現時刻まで加算（最大12時間）
+    if last_attend is not None and last_attend_date is not None:
+        now = datetime.now()
+        if now.date() != last_attend.date():
+            # 今日でなければ出席日の 23:59:59 で打ち切り
+            midnight = datetime(
+                last_attend.year, last_attend.month, last_attend.day,
+                23, 59, 59
+            )
+            diff = max((midnight - last_attend).total_seconds(), 0.0)
+        else:
+            diff = min((now - last_attend).total_seconds(), 12 * 3600)
+        if diff > 0:
+            _add_secs(last_attend_date, diff)
+
+    result = [
+        {"date": d, "hours": round(s / 3600, 2)}
+        for d, s in sorted(daily_seconds.items())
+    ]
+    return result
+
+
+def _make_summary_csv_bytes(name: str) -> bytes:
+    """日別在籍時間集計を CSV バイト列で返す。"""
+    records = _calc_daily_hours(name)
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["date", "hours"])
+    writer.writeheader()
+    writer.writerows(records)
+    return buf.getvalue().encode("utf-8-sig")  # BOM付き UTF-8（Excel対応）
+
+
+@app.route("/api/admin/download/attendance/<name>")
+@admin_required
+def download_attendance_csv(name: str):
+    """学生個別の日別在籍時間集計CSVをダウンロードする（リモート除く）。"""
+    filepath = ATTENDANCE_DIR / f"{name}.csv"
+    if not filepath.exists():
+        return jsonify({"error": f"{name} の出席データが見つかりません"}), 404
+    csv_bytes = _make_summary_csv_bytes(name)
+    buf = io.BytesIO(csv_bytes)
+    return send_file(
+        buf,
+        mimetype="text/csv; charset=utf-8",
+        as_attachment=True,
+        download_name=f"{name}_在籍時間.csv",
+    )
+
+
+@app.route("/api/admin/download/attendance_zip")
+@admin_required
+def download_attendance_zip():
+    """全学生の日別在籍時間集計CSVを ZIP でまとめてダウンロード。"""
+    students = []
+    if STUDENTS_CSV.exists():
+        with open(STUDENTS_CSV, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                students.append(row["name"].strip())
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in sorted(students):
+            csv_bytes = _make_summary_csv_bytes(name)
+            zf.writestr(f"{name}_在籍時間.csv", csv_bytes)
+    buf.seek(0)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"在籍時間_{timestamp}.zip",
+    )
 
 
 if __name__ == "__main__":

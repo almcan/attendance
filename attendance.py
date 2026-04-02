@@ -12,7 +12,7 @@ import csv
 import os
 import signal
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 try:
@@ -79,22 +79,59 @@ def load_latest_attendance(students: dict) -> dict:
             continue
         with open(filepath, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
+            last_status = None
+            last_timestamp = None
             for row in reader:
-                status[idm] = row.get("status", "出席").strip()
+                last_status = row.get("status", "出席").strip()
+                last_timestamp = row.get("timestamp", "").strip()
+            
+            # 12時間経過していたら、前回の状態が「出席」でも「退席」扱いにして
+            # 次のタッチで新しく「出席」から始まるようにする
+            if last_status in ("出席", "リモート中") and last_timestamp:
+                try:
+                    last_dt = datetime.strptime(last_timestamp, "%Y-%m-%d %H:%M:%S")
+                    if datetime.now() - last_dt > timedelta(hours=12):
+                        last_status = "退席"
+                except:
+                    pass
+            status[idm] = last_status
     return status
 
 
-def record_attendance(name: str, status: str):
-    """出席または退席を学生個人の CSV ファイルに記録する。"""
+def record_attendance(name: str, status: str, date: str = None, reason: str = None):
+    """出席・退席・欠席を学生個人の CSV ファイルに記録する。"""
     attendance_file = get_student_attendance_file(name)
     file_exists = attendance_file.exists()
+    header = ["date", "status", "timestamp", "reason"]
+    
+    # ファイルが存在する場合、前のヘッダーをチェック
+    if file_exists:
+        with open(attendance_file, "r", encoding="utf-8") as f:
+            line = f.readline()
+            if "reason" not in line:
+                # 理由カラムがない古い形式の場合は、一旦全て読み込んで書き直すか、
+                # 単純に追記する際に DictWriter の extrasaction='ignore' を使う手もあるが、
+                # ここでは安全のために新しいヘッダーで管理する。
+                pass # 既存の読み込み処理(DictReader)が正常に動くように、書き込み時に調整する
+
+    # 書き込み
+    is_new = not file_exists
     with open(attendance_file, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        if not file_exists:
-            writer.writerow(["date", "status", "timestamp"])
+        # DictWriter を使用してカラム名で管理
+        writer = csv.DictWriter(f, fieldnames=header, extrasaction='ignore')
+        if is_new:
+            writer.writeheader()
+        
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        date = datetime.now().strftime("%Y-%m-%d")
-        writer.writerow([date, status, now])
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+            
+        writer.writerow({
+            "date": date,
+            "status": status,
+            "timestamp": now,
+            "reason": reason if reason else ""
+        })
 
     # ダッシュボードにリアルタイム通知
     try:

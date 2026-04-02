@@ -102,8 +102,8 @@ def check_attendance():
             if attendance_file.exists():
                 with open(attendance_file, "r", encoding="utf-8") as af:
                     areader = csv.DictReader(af)
-                    # 全記録から「出席」した日付を抽出
-                    attended_dates = [arow["date"] for arow in areader if arow.get("status") == "出席"]
+                    # 全記録から「出席」または「リモート中」の日付を抽出
+                    attended_dates = [arow["date"] for arow in areader if arow.get("status") in ("出席", "リモート中")]
                     
                     # 直近5営業日に1度でも出席しているか
                     if any(day in attended_dates for day in target_days):

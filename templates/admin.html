@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理画面 - 休日設定</title>
+    <title>管理画面 - D102 出席管理</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
@@ -16,60 +16,108 @@
 
         body {
             font-family: 'Noto Sans JP', sans-serif;
-            background: #f8f9fa;
+            background: #f0f4f8;
             color: #333;
             line-height: 1.6;
+            min-height: 100vh;
         }
 
-        .container {
-            max-width: 600px;
-            margin: 3rem auto;
-            padding: 2rem;
-            background: #fff;
-            border-radius: 1rem;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 900;
-            margin-bottom: 1.5rem;
+        /* ─── ヘッダー ─── */
+        .header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            padding: 1.2rem 2rem;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 1rem;
         }
 
-        .nav-links {
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
+        .header h1 {
+            font-size: 1.3rem;
+            font-weight: 900;
         }
 
-        .nav-links a {
-            color: #1976d2;
+        .header .nav {
+            display: flex;
+            gap: 0.6rem;
+            margin-left: auto;
+        }
+
+        .header .nav a {
+            padding: 0.4rem 1rem;
+            background: rgba(255, 255, 255, 0.13);
+            color: #fff;
             text-decoration: none;
+            border-radius: 1.5rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: background 0.2s;
         }
 
-        .nav-links a:hover {
-            text-decoration: underline;
+        .header .nav a:hover {
+            background: rgba(255, 255, 255, 0.25);
         }
 
-        /* フォーム */
+        .logout-btn {
+            padding: 0.4rem 1rem;
+            background: rgba(255, 100, 100, 0.25);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 1.5rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            transition: background 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 100, 100, 0.45);
+        }
+
+        /* ─── コンテンツ ─── */
+        .main {
+            max-width: 720px;
+            margin: 2rem auto;
+            padding: 0 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 1rem;
+            padding: 1.5rem 1.8rem;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            font-weight: 900;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #1a1a2e;
+        }
+
+        /* ─── 休日フォーム ─── */
         .add-box {
             background: #e3f2fd;
-            padding: 1.5rem;
+            padding: 1.2rem 1.4rem;
             border-radius: 0.8rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.2rem;
         }
 
-        .add-box h2 {
-            font-size: 1rem;
-            margin-bottom: 1rem;
+        .add-box h3 {
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+            color: #1565c0;
         }
 
         .form-row {
             display: flex;
             align-items: center;
-            gap: 0.8rem;
+            gap: 0.7rem;
             flex-wrap: wrap;
         }
 
@@ -80,38 +128,59 @@
             flex: 2;
         }
 
-        input {
-            padding: 0.6rem;
-            border: 1px solid #ccc;
+        input[type="date"],
+        input[type="text"] {
+            padding: 0.55rem 0.7rem;
+            border: 1.5px solid #ccc;
             border-radius: 0.4rem;
             font-family: inherit;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
         }
 
         input[type="date"] {
             flex: 1;
-            min-width: 140px;
+            min-width: 130px;
         }
 
         input[type="text"] {
             flex: 1.5;
-            min-width: 180px;
+            min-width: 160px;
         }
 
-        button.add-btn {
+        input:focus {
+            border-color: #1976d2;
+        }
+
+        .btn {
+            padding: 0.55rem 1.1rem;
+            border: none;
+            border-radius: 0.4rem;
+            font-weight: 700;
+            font-family: inherit;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .btn:hover {
+            opacity: 0.85;
+        }
+
+        .btn-primary {
             background: #1976d2;
             color: #fff;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            border-radius: 0.4rem;
-            cursor: pointer;
-            font-weight: 700;
         }
 
-        button.add-btn:hover {
-            background: #1565c0;
+        .btn-danger {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+            font-size: 0.8rem;
         }
 
-        /* リスト */
+        /* ─── 休日リスト ─── */
         .holiday-list {
             list-style: none;
         }
@@ -120,128 +189,492 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.8rem 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .holiday-info {
-            display: flex;
-            gap: 1rem;
-            align-items: baseline;
+            padding: 0.7rem 0;
+            border-bottom: 1px solid #f0f0f0;
         }
 
         .holiday-date {
             font-weight: 700;
             color: #d32f2f;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
         .holiday-name {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
+            color: #444;
         }
 
-        button.del-btn {
-            background: #ffebee;
-            color: #c62828;
-            border: 1px solid #ffcdd2;
-            padding: 0.3rem 0.6rem;
-            border-radius: 0.3rem;
-            font-size: 0.8rem;
+        /* ─── 休日カレンダー ─── */
+        .holiday-calendar {
+            margin-top: 1rem;
+            user-select: none;
+        }
+
+        .cal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+        }
+
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            background: #eee;
+            border: 1px solid #ddd;
+        }
+
+        .cal-day-label {
+            background: #f8f9fa;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 0;
+            color: #666;
+        }
+
+        .cal-cell {
+            background: #fff;
+            aspect-ratio: 1;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            position: relative;
             cursor: pointer;
+            transition: background 0.15s;
         }
 
-        button.del-btn:hover {
-            background: #ffcdd2;
+        .cal-cell:hover {
+            background: #f0f7ff;
         }
 
+        .cal-cell.other-month {
+            background: #fafafa;
+            color: #ccc;
+            cursor: default;
+        }
+
+        .cal-cell.today {
+            background: #fffde7;
+        }
+
+        .cal-cell.is-holiday {
+            background: #ffebee;
+        }
+
+        .cal-date-num {
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .is-holiday .cal-date-num {
+            color: #d32f2f;
+        }
+
+        .cal-holiday-label {
+            font-size: 0.65rem;
+            color: #d32f2f;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.1;
+        }
+
+        /* ─── モーダル ─── */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #fff;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+
+        .modal-body {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .history-table th,
+        .history-table td {
+            text-align: left;
+            padding: 0.6rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .history-table th {
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+        }
+
+        .reason-badge {
+            font-size: 0.75rem;
+            color: #666;
+            background: #f0f0f0;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
+        /* ─── CSVダウンロード ─── */
+        .dl-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .dl-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 0.6rem;
+            padding: 0.65rem 1rem;
+            gap: 1rem;
+        }
+
+        .dl-row .dl-label {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #333;
+            flex: 1;
+        }
+
+        .dl-row .dl-sub {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .btn-dl {
+            background: linear-gradient(135deg, #1e88e5, #42a5f5);
+            color: #fff;
+            padding: 0.45rem 1rem;
+            border: none;
+            border-radius: 0.4rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.15s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-dl:hover {
+            opacity: 0.85;
+        }
+
+        .btn-dl-zip {
+            background: linear-gradient(135deg, #7b1fa2, #ab47bc);
+        }
+
+        .section-sub {
+            font-size: 0.78rem;
+            color: #777;
+            margin-bottom: 0.8rem;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px dashed #ddd;
+            margin: 0.8rem 0;
+        }
+
+        /* ─── エラー ─── */
         .error {
             color: #d32f2f;
             background: #fdf2f2;
-            padding: 0.8rem;
+            padding: 0.7rem;
             border-radius: 0.4rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
             display: none;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="nav-links">
-            <a href="/calendar">← カレンダーに戻る</a> | <a href="/">座席表に戻る</a>
+    <div class="header">
+        <h1>⚙️ 管理画面</h1>
+        <div class="nav">
+            <a href="/">座席表</a>
+            <a href="/calendar">カレンダー</a>
+            <a href="/admin/logout" class="logout-btn">🔓 ログアウト</a>
         </div>
-        <h1>⚙️ 休日設定（管理画面）</h1>
+    </div>
 
-        <div id="error-msg" class="error"></div>
+    <div class="main">
 
-        <div class="add-box">
-            <h2>新しい休日を追加（期間指定も可能）</h2>
-            <div class="form-row">
-                <div class="date-range">
-                    <input type="date" id="h-date" title="開始日">
-                    <span>〜</span>
-                    <input type="date" id="h-end-date" title="終了日（任意）">
+        <!-- ── 休日設定 ── -->
+        <div class="card">
+            <h2>📅 休日設定</h2>
+            <div id="error-msg" class="error"></div>
+
+            <div class="add-box">
+                <h3>休日を登録（期間指定）</h3>
+                <div class="form-row">
+                    <div class="date-range">
+                        <input type="date" id="h-date" title="開始日">
+                        <span>〜</span>
+                        <input type="date" id="h-end-date" title="終了日（任意）">
+                    </div>
+                    <input type="text" id="h-name" placeholder="例: 夏休み">
+                    <button class="btn btn-primary" onclick="addHoliday()">追加</button>
                 </div>
-                <input type="text" id="h-name" placeholder="例: 夏休み">
-                <button class="add-btn" onclick="addHoliday()">追加</button>
             </div>
-            <p style="font-size:0.75rem;color:#666;margin-top:0.5rem;">※開始日のみ入力で1日、終了日も入力で範囲登録されます。</p>
+
+            <!-- カレンダー UI -->
+            <div class="holiday-calendar">
+                <div class="cal-header">
+                    <button class="btn btn-danger" style="padding:4px 10px;" onclick="changeMonth(-1)">◀ 前月</button>
+                    <span id="cal-title" style="font-weight:900;">2024年 4月</span>
+                    <button class="btn btn-primary" style="padding:4px 10px;" onclick="changeMonth(1)">次月 ▶</button>
+                </div>
+                <div class="cal-grid" id="cal-grid"></div>
+            </div>
+
+            <p style="font-size:0.75rem;color:#777;margin-top:1rem;">
+                ※ カレンダーの赤い日をクリックすると削除できます。
+            </p>
         </div>
 
-        <h3>登録済みのカスタム休日</h3>
-        <ul id="holiday-list" class="holiday-list">
-            <!-- JS で流し込み -->
-        </ul>
+        <!-- ── CSVダウンロード ── -->
+        <div class="card">
+            <h2>📥 CSV ダウンロード</h2>
+
+            <!-- 全員まとめてZIP -->
+            <div class="dl-row" style="margin-bottom:1.2rem;">
+                <div>
+                    <div class="dl-label">📦 全在籍時間集計（ZIP一括）</div>
+                    <div class="dl-sub">全学生の日別在籍時間（リモート除く）を ZIP 圧縮</div>
+                </div>
+                <a href="/api/admin/download/attendance_zip" class="btn-dl btn-dl-zip">⬇ ZIP ダウンロード</a>
+            </div>
+
+            <hr class="divider">
+            <p class="section-sub">▼ 学生別に個別ダウンロード</p>
+
+            <div class="dl-group" id="individual-dl-list">
+                <!-- JS で流し込み -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- モーダル: 履歴表示 -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-student-name">学生氏名</h2>
+                <button class="btn btn-danger" style="padding:4px 8px;" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>日付</th>
+                            <th>在籍時間（h）</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-history-body"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
+        // ─── 学生別ダウンロード ───
+        const students = {{ students | tojson }};
+
+        function renderIndividualDownloads() {
+            const container = document.getElementById('individual-dl-list');
+            if (students.length === 0) {
+                container.innerHTML = '<p style="color:#aaa;font-size:0.85rem;">学生データがありません。</p>';
+                return;
+            }
+            container.innerHTML = students.map(name => `
+                <div class="dl-row">
+                    <div style="flex:1;">
+                        <div class="dl-label">${name}</div>
+                        <div class="dl-sub">日別在籍時間（リモート除く）</div>
+                    </div>
+                    <div style="display:flex;gap:0.5rem;">
+                        <button onclick="showHistory('${name}')" class="btn btn-primary" style="padding:0.4rem 0.8rem;font-size:0.75rem;">📜 履歴確認</button>
+                        <a href="/api/admin/download/attendance/${encodeURIComponent(name)}"
+                           class="btn-dl">⬇ CSV</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ─── 履歴モーダル（日別在籍時間） ───
+        async function showHistory(name) {
+            document.getElementById('modal-student-name').textContent = `${name} さんの在籍時間（リモート除く）`;
+            const overlay = document.getElementById('modal-overlay');
+            const tbody = document.getElementById('modal-history-body');
+            tbody.innerHTML = '<tr><td colspan="2">読み込み中...</td></tr>';
+            overlay.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/admin/download/attendance/${encodeURIComponent(name)}`);
+                const csvText = await res.text();
+
+                // BOM除去 + 簡易CSVパース
+                const clean = csvText.replace(/^\uFEFF/, '');
+                const lines = clean.trim().split('\n');
+                const header = lines[0].split(',');
+                const rows = lines.slice(1).map(line => {
+                    const values = line.split(',');
+                    const obj = {};
+                    header.forEach((h, i) => obj[h.trim()] = (values[i] || '').trim());
+                    return obj;
+                }).filter(r => r.date);
+
+                if (rows.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="2">データがありません</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = rows.map(r => `
+                    <tr>
+                        <td>${r.date}</td>
+                        <td style="text-align:right; font-weight:700;">${r.hours} h</td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                tbody.innerHTML = '<tr><td colspan="2">エラーが発生しました</td></tr>';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').style.display = 'none';
+        }
+
+        // ─── 休日カレンダー管理 ───
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth() + 1;
+        let holidaysData = {};
+
         async function fetchHolidays() {
             try {
                 const res = await fetch('/api/holidays');
                 if (res.status === 403) {
-                    showError('この画面は localhost（サーバーPC）からのみ操作可能です。');
+                    showError('アクセス権がありません。');
                     return;
                 }
                 const data = await res.json();
-                renderList(data);
+                holidaysData = {};
+                data.forEach(h => holidaysData[h.date] = h.name);
+                renderCalendar();
             } catch (e) {
-                showError('データの取得に失敗しました。');
+                showError('休日データの取得に失敗しました。');
             }
         }
 
-        function renderList(list) {
-            const container = document.getElementById('holiday-list');
-            container.innerHTML = list.length === 0 ? '<p style="color:#888;padding:1rem;">登録されている休日はありません。</p>' : '';
-            list.forEach(h => {
-                const li = document.createElement('li');
-                li.className = 'holiday-item';
-                li.innerHTML = `
-                    <div class="holiday-info">
-                        <span class="holiday-date">${h.date}</span>
-                        <span class="holiday-name">${h.name}</span>
-                    </div>
-                    <button class="del-btn" onclick="deleteHoliday('${h.date}')">削除</button>
-                `;
-                container.appendChild(li);
+        function renderCalendar() {
+            const grid = document.getElementById('cal-grid');
+            const title = document.getElementById('cal-title');
+            title.textContent = `${currentYear}年 ${currentMonth}月`;
+
+            let html = '';
+            ['日', '月', '火', '水', '木', '金', '土'].forEach(d => {
+                html += `<div class="cal-day-label">${d}</div>`;
             });
+
+            const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+            const lastDate = new Date(currentYear, currentMonth, 0).getDate();
+            const prevLastDate = new Date(currentYear, currentMonth - 1, 0).getDate();
+
+            // 前月分
+            for (let i = firstDay; i > 0; i--) {
+                html += `<div class="cal-cell other-month">${prevLastDate - i + 1}</div>`;
+            }
+
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            // 今月分
+            for (let d = 1; d <= lastDate; d++) {
+                const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isHoliday = !!holidaysData[dateStr];
+                const holidayName = holidaysData[dateStr] || '';
+                const isToday = dateStr === todayStr;
+
+                const cls = `cal-cell ${isHoliday ? 'is-holiday' : ''} ${isToday ? 'today' : ''}`;
+                const clickAction = isHoliday ? `deleteHoliday('${dateStr}')` : `setHolidayDate('${dateStr}')`;
+
+                html += `
+                    <div class="${cls}" onclick="${clickAction}">
+                        <div class="cal-date-num">${d}</div>
+                        ${isHoliday ? `<div class="cal-holiday-label" title="${holidayName}">${holidayName}</div>` : ''}
+                    </div>
+                `;
+            }
+
+            grid.innerHTML = html;
+        }
+
+        function changeMonth(diff) {
+            currentMonth += diff;
+            if (currentMonth > 12) { currentYear++; currentMonth = 1; }
+            if (currentMonth < 1) { currentYear--; currentMonth = 12; }
+            renderCalendar();
+        }
+
+        function setHolidayDate(dateStr) {
+            document.getElementById('h-date').value = dateStr;
+            document.getElementById('h-name').focus();
         }
 
         async function addHoliday() {
             const date = document.getElementById('h-date').value;
             const endDate = document.getElementById('h-end-date').value;
             const name = document.getElementById('h-name').value;
-            if (!date || !name) return;
+            if (!date || !name) {
+                alert("日付と休日名を入力してください。");
+                return;
+            }
 
             try {
                 const res = await fetch('/api/holidays', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        date: date,
-                        end_date: endDate || null,
-                        name: name
-                    })
+                    body: JSON.stringify({ date, end_date: endDate || null, name }),
                 });
                 if (res.ok) {
                     document.getElementById('h-date').value = '';
@@ -273,6 +706,7 @@
             el.style.display = 'block';
         }
 
+        renderIndividualDownloads();
         fetchHolidays();
     </script>
 </body>

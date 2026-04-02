@@ -55,6 +55,49 @@
             flex-wrap: wrap;
         }
 
+        .nav-top-right {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 1rem;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.7rem 1.4rem;
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 2rem;
+            font-size: 1rem;
+            font-weight: 700;
+            transition: all 0.25s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .nav-btn.admin {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .nav-btn.admin:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
         .stat {
             display: flex;
             align-items: center;
@@ -215,6 +258,30 @@
             opacity: 0.8;
         }
 
+        /* リモート出席 */
+        .seat.status-remote {
+            background: linear-gradient(135deg, #1e88e5, #42a5f5);
+            border: 2px solid #1565c0;
+            box-shadow: 0 4px 15px rgba(30, 136, 229, 0.4);
+            transform: scale(1.03);
+        }
+
+        .seat.status-remote .seat-name {
+            color: #fff;
+            font-weight: 900;
+        }
+
+        .seat.status-remote .seat-label {
+            color: #fff;
+            font-weight: 700;
+            opacity: 0.9;
+        }
+
+        .seat.status-remote .seat-time {
+            color: #fff;
+            opacity: 0.8;
+        }
+
         /* 退席 */
         .seat.status-left {
             background: #fff9c4;
@@ -235,6 +302,20 @@
         .seat.status-left .seat-time {
             color: #f57f17;
             opacity: 0.8;
+        }
+
+        /* 欠席 */
+        .seat.status-absent {
+            background: linear-gradient(135deg, #d32f2f, #ef5350);
+            border: 2px solid #b71c1c;
+            box-shadow: 0 4px 15px rgba(211, 47, 47, 0.4);
+            transform: scale(1.02);
+        }
+
+        .seat.status-absent .seat-name,
+        .seat.status-absent .seat-label,
+        .seat.status-absent .seat-time {
+            color: #fff;
         }
 
         .seat-name {
@@ -276,6 +357,22 @@
             animation: attend-flash 0.8s ease;
         }
 
+        @keyframes remote-flash {
+            0% {
+                box-shadow: 0 4px 15px rgba(30, 136, 229, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(30, 136, 229, 0.7);
+            }
+            100% {
+                box-shadow: 0 4px 15px rgba(30, 136, 229, 0.4);
+            }
+        }
+
+        .seat.flash-remote {
+            animation: remote-flash 0.8s ease;
+        }
+
         /* ─── 凡例 ─── */
         .legend {
             display: flex;
@@ -301,8 +398,16 @@
             background: linear-gradient(135deg, #43a047, #66bb6a);
         }
 
+        .legend-dot.remote {
+            background: linear-gradient(135deg, #1e88e5, #42a5f5);
+        }
+
         .legend-dot.left {
             background: #ffcc02;
+        }
+
+        .legend-dot.absent {
+            background: linear-gradient(135deg, #d32f2f, #ef5350);
         }
 
         .legend-dot.none {
@@ -403,6 +508,11 @@
 </head>
 
 <body>
+    <div class="nav-top-right">
+        <a href="/calendar" class="nav-btn">📅 カレンダー</a>
+        <a href="/admin" class="nav-btn admin">⚙️ 管理</a>
+    </div>
+
     <div class="header">
         <h1>D102 座席表</h1>
         <div class="subtitle"><span id="date"></span> <span id="header-clock"></span></div>
@@ -415,12 +525,9 @@
                 <span>未出席</span>
                 <span class="num" id="absent-count">-</span>
             </div>
-            <a href="/calendar"
-                style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1.2rem;background:rgba(255,255,255,0.15);color:#fff;text-decoration:none;border-radius:2rem;font-size:0.95rem;font-weight:700;transition:background 0.2s;"
-                onmouseover="this.style.background='rgba(255,255,255,0.28)'"
-                onmouseout="this.style.background='rgba(255,255,255,0.15)'">📅 カレンダー</a>
         </div>
     </div>
+
 
     <div class="classroom">
         <div class="desk-area-wrapper" id="desk-area-wrapper">
@@ -431,7 +538,13 @@
                 <div class="legend-dot present"></div>出席
             </div>
             <div class="legend-item">
+                <div class="legend-dot remote"></div>リモート中
+            </div>
+            <div class="legend-item">
                 <div class="legend-dot left"></div>退席
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot absent"></div>欠席
             </div>
             <div class="legend-item">
                 <div class="legend-dot none"></div>未出席
@@ -581,10 +694,18 @@
                                 statusClass = 'status-present';
                                 label = '出席';
                                 timeText = seat.timestamp ? seat.timestamp.split(' ')[1] : '';
+                            } else if (seat.status === 'リモート中') {
+                                statusClass = 'status-remote';
+                                label = 'リモート中';
+                                timeText = seat.timestamp ? seat.timestamp.split(' ')[1] : '';
                             } else if (seat.status === '退席') {
                                 statusClass = 'status-left';
                                 label = '退席';
                                 timeText = seat.timestamp ? seat.timestamp.split(' ')[1] : '';
+                            } else if (seat.status === '欠席') {
+                                statusClass = 'status-absent';
+                                label = '欠席';
+                                timeText = seat.date || '';
                             } else {
                                 statusClass = 'status-none';
                                 label = '';
@@ -595,15 +716,20 @@
 
                             if (previousStatuses[seatKey] !== undefined &&
                                 previousStatuses[seatKey] !== seat.status) {
-                                seatEl.classList.add('flash');
-                                // 音を鳴らす
-                                if (seat.status === '出席') playCheckIn();
-                                else if (seat.status === '退席') playCheckOut();
+                                if (seat.status === 'リモート中') {
+                                    seatEl.classList.add('flash-remote');
+                                    playCheckIn();
+                                } else {
+                                    seatEl.classList.add('flash');
+                                    // 音を鳴らす
+                                    if (seat.status === '出席') playCheckIn();
+                                    else if (seat.status === '退席') playCheckOut();
+                                }
                             }
                             previousStatuses[seatKey] = seat.status;
 
                             seatEl.innerHTML = `
-                                <div class="seat-name">${seat.full_name}</div>
+                                <div class="seat-name">${seat.seat_name}</div>
                                 <div class="seat-label">${label || '未出席'}</div>
                                 <div class="seat-time">${seat.date || ''}</div>
                                 <div class="seat-time">${seat.time || ''}</div>
