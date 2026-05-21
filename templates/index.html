@@ -879,6 +879,7 @@
         // ─── 編集モーダル ───
         let editingName = '';
         let reassignActive = false;
+        let reassignPollTimer = null;
 
         function openEditModal(seat) {
             editingName = seat.full_name;
@@ -894,6 +895,7 @@
 
         function closeEditModal() {
             document.getElementById('edit-overlay').classList.remove('active');
+            if (reassignPollTimer) { clearInterval(reassignPollTimer); reassignPollTimer = null; }
             if (reassignActive) {
                 fetch('/api/reassign', { method: 'DELETE' });
                 reassignActive = false;
@@ -922,11 +924,37 @@
 
                 if (data.ok) {
                     reassignActive = true;
-                    document.getElementById('reassign-status').style.display = 'block';
+                    const statusEl = document.getElementById('reassign-status');
+                    statusEl.textContent = '📳 カードをリーダーにタッチしてください...';
+                    statusEl.style.background = '#e3f2fd';
+                    statusEl.style.color = '#1565c0';
+                    statusEl.style.display = 'block';
                     document.getElementById('btn-reassign').style.display = 'none';
+
+                    // 完了をポーリングで検知
+                    reassignPollTimer = setInterval(async () => {
+                        try {
+                            const r = await fetch('/api/reassign/status');
+                            const d = await r.json();
+                            if (d.done) {
+                                clearInterval(reassignPollTimer);
+                                reassignPollTimer = null;
+                                reassignActive = false;
+
+                                // 完了メッセージを表示
+                                statusEl.textContent = '✅ カードを更新しました！';
+                                statusEl.style.background = '#e8f5e9';
+                                statusEl.style.color = '#2e7d32';
+
+                                // フラグリセット＆自動で閉じる
+                                fetch('/api/reassign/done', { method: 'DELETE' });
+                                setTimeout(() => closeEditModal(), 1500);
+                            }
+                        } catch (_) { }
+                    }, 500);
                 }
             } catch (err) {
-                document.getElementById('edit-error').textContent = '通信エラー';
+                document.getElementById('edit-error').textContent = 'エラー：サーバーに接続できませんでした';
             }
         }
 

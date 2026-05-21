@@ -444,7 +444,8 @@ unknown_tap_counter = {"count": 0}
 
 # 「次のカードタッチでこの学生の IDm を更新する」フラグ
 # paused: モーダル表示中は出席登録を停止
-pending_reassign = {"name": None, "paused": False}
+# done: IDm更新完了したら Trueになる
+pending_reassign = {"name": None, "paused": False, "done": False}
 
 # 新規登録時のIDmキャプチャ
 pending_capture = {"active": False, "idm": None}
@@ -507,6 +508,24 @@ def api_reassign():
 def api_cancel_reassign():
     """IDm 再登録をキャンセルする。"""
     pending_reassign["name"] = None
+    pending_reassign["done"] = False
+    return jsonify({"ok": True})
+
+
+@app.route("/api/reassign/status")
+def api_reassign_status():
+    """IDm再登録の完了状態を返す。"""
+    return jsonify({
+        "done": pending_reassign.get("done", False),
+        "waiting": pending_reassign.get("name") is not None,
+    })
+
+
+@app.route("/api/reassign/done", methods=["DELETE"])
+@localhost_only
+def api_reassign_done_reset():
+    """完了フラグをリセットする。"""
+    pending_reassign["done"] = False
     return jsonify({"ok": True})
 
 
@@ -649,6 +668,19 @@ def _calc_daily_hours(name: str) -> list[dict]:
             daily_seconds[date_str] = 0.0
 
         if r["status"] == "出席":
+            # 前の出席が退席なしで次の出席が来た場合は前の分を先に確定させる
+            if last_attend is not None and last_attend_date is not None:
+                if r["ts"].date() != last_attend.date():
+                    midnight = datetime(
+                        last_attend.year, last_attend.month, last_attend.day,
+                        23, 59, 59
+                    )
+                    diff = max((midnight - last_attend).total_seconds(), 0.0)
+                    _add_secs(last_attend_date, diff)
+                else:
+                    diff = (r["ts"] - last_attend).total_seconds()
+                    if diff > 0:
+                        _add_secs(last_attend_date, diff)
             last_attend = r["ts"]
             last_attend_date = date_str
 

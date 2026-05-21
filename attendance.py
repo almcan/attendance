@@ -240,6 +240,9 @@ def attendance_mode():
 
                     print(f"  {GREEN}🔄 [{now_str}] {target_name} の IDm を更新しました (IDm: {idm}){RESET}")
 
+                    # 完了フラグをセット → フロントエンドが検知してモーダルを閉じる
+                    pending_reassign["done"] = True
+
                     try:
                         from dashboard import notify_clients
                         notify_clients()
